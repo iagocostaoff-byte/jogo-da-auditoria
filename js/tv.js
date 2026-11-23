@@ -204,7 +204,7 @@ function sync(){
 function estadoPublico(){
   const fase = state.phase === 'lobby' ? 'lobby' : state.phase === 'end' ? (state.mm && state.mm.ativo ? 'matamata' : (ui.revelaAte > Date.now() ? 'apurando' : 'fim')) : 'jogo';
   const est = {
-    v: ++seq, sala: state.sala, fase,
+    v: ++seq, versao: Rede.VERSAO, sala: state.sala, fase,
     rodada: state.round, rodadas: state.rounds, vez: state.cur, turno: ui.phase, dado: ui.lastDie,
     equipes: state.groups.map((g, i) => {
       const cap = capitao(i);

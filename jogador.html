@@ -142,11 +142,11 @@ main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 </main>
 
 <input type="file" id="foto" accept="image/*" hidden>
-<script src="js/firebase-config.js"></script>
+<script src="js/firebase-config.js?v=6"></script>
 <script src="js/vendor/firebase-app-compat.js"></script>
 <script src="js/vendor/firebase-database-compat.js"></script>
 <script src="js/vendor/mqtt.min.js"></script>
-<script src="js/rede.js"></script>
+<script src="js/rede.js?v=6"></script>
 <script>
 /* ==================================================================
    Tela do celular. O capitão (primeiro celular de cada equipe) lança o
@@ -167,7 +167,7 @@ let pid = params.get('pid') || ls('trilha-pid');   // ?pid= só serve para teste
 if(!pid){ pid = 'p' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); ls('trilha-pid', pid); }
 let me = { nome: ls('trilha-nome') || '', equipe: null };
 const EMOJIS = ['🦁','🐺','🦊','🐯','🦉','🦈','🐉','🐙','🦅','🐝','🕵️','🧮','📊','💼','🔍','🧾','💸','⚖️','☕','🍕','👑','🚀','🔥','🎯'];
-let avatarAberto = false, avatarEnviando = false, avatarErro = '';
+let avatarAberto = false, avatarEnviando = false, avatarErro = '', avatarPend = null;
 let conn = null, est = null, enviado = {}, achou = false, conectado = null, erroRede = null, esperou = false;
 
 Rede.init();
@@ -231,6 +231,7 @@ function renderTela(){
   let h = eq ? `<div class="teamband"><div class="tn">${esc(eq.nome)}${eq.semRessalvas ? ' · Sem ressalvas' : ''}</div><div class="role">${cap ? 'Você é o capitão: você lança o dado e responde' : `Torcida${eq.capNome ? ` · capitão: ${esc(eq.capNome)}` : ''}`}</div><div class="pts num">${eq.pts}<small>pontos</small></div></div>`
     : `<div class="panel"><b>Só assistindo</b><div class="status">Você acompanha a partida sem equipe.</div></div>`;
 
+  if(est.versao !== Rede.VERSAO) h += `<div class="panel" style="border-color:#B4433A"><b>Versões diferentes</b><div class="status">A TV e este celular estão com versões diferentes do jogo. Peça para o professor recarregar a TV (Ctrl+Shift+R) e recarregue esta página.</div></div>`;
   if(est.fase === 'matamata'){ h += telaMataMata(); v.innerHTML = h; bindMataMata(); return; }
   if(est.fase === 'lobby'){
     h += `<div class="panel center"><h2>Pronto!</h2><p class="status">Aguarde o professor começar a partida.</p></div>${cap ? avatarHtml(eq, true) : ''}${placar()}`;
@@ -408,19 +409,32 @@ function telaFim(){
 /* ---------------- Imagem do pino (só o capitão) ---------------- */
 function avatarLocal(){ return ls('trilha-avatar-' + salaCod + '-' + me.equipe) || ''; }
 function avatarHtml(eq, lobby){
-  const a = eq.avatar;
+  const conf = eq.avatar;
+  // confirmação da TV: limpa o pendente quando a TV já mostra a escolha
+  if(avatarPend && ((avatarPend.tipo === null && !conf) || (conf && conf.tipo === avatarPend.tipo && (conf.tipo === 'img' || conf.v === avatarPend.v)))) avatarPend = null;
+  const a = avatarPend ? (avatarPend.tipo === null ? null : avatarPend) : conf;
   const prev = !a ? esc(eq.sigla) : a.tipo === 'emoji' ? esc(a.v) : (avatarLocal() ? `<img src="${avatarLocal()}" alt="">` : '📷');
-  return `<div class="panel av-box"><div class="av-top"><div class="av-prev">${prev}</div><div><b>Imagem do pino</b><div class="status">${lobby ? 'Escolha a imagem que vai andar no tabuleiro da TV.' : 'Troque quando quiser.'}${avatarEnviando ? ' Enviando…' : ''}${avatarErro ? ' ' + esc(avatarErro) : ''}</div></div></div>
+  return `<div class="panel av-box"><div class="av-top"><div class="av-prev">${prev}</div><div><b>Imagem do pino</b><div class="status">${lobby ? 'Escolha a imagem que vai andar no tabuleiro da TV.' : 'Troque quando quiser.'}${avatarEnviando || avatarPend ? ' Enviando para a TV…' : ''}${avatarErro ? ' ' + esc(avatarErro) : ''}</div></div></div>
     <div class="av-grid">${EMOJIS.map(e => `<button data-emo="${e}" class="${a && a.tipo === 'emoji' && a.v === e ? 'sel' : ''}">${e}</button>`).join('')}</div>
     <div class="av-acts"><button id="av-foto">Enviar uma foto</button>${a ? '<button id="av-sem">Usar a sigla</button>' : ''}${lobby ? '' : '<button id="av-fechar">Fechar</button>'}</div>
     <div class="status">A foto aparece para a turma inteira na TV. O professor pode remover.</div></div>`;
 }
 function bindAvatar(){
-  document.querySelectorAll('[data-emo]').forEach(b => b.onclick = () => enviar({ t: 'avatar', tipo: 'emoji', v: b.dataset.emo }));
+  document.querySelectorAll('[data-emo]').forEach(b => b.onclick = () => mandarAvatar({ tipo: 'emoji', v: b.dataset.emo }));
   const f = $('#av-foto'); if(f) f.onclick = () => $('#foto').click();
-  const s = $('#av-sem'); if(s) s.onclick = () => enviar({ t: 'avatar', tipo: null });
+  const s = $('#av-sem'); if(s) s.onclick = () => mandarAvatar({ tipo: null });
   const ab = $('#av-abrir'); if(ab) ab.onclick = () => { avatarAberto = true; render(); };
   const fe = $('#av-fechar'); if(fe) fe.onclick = () => { avatarAberto = false; render(); };
+}
+let avatarT = null;
+function mandarAvatar(a){
+  avatarPend = a; avatarErro = '';
+  enviar(Object.assign({ t: 'avatar' }, a));
+  clearTimeout(avatarT);
+  avatarT = setTimeout(() => {
+    if(avatarPend){ avatarPend = null; avatarErro = est && est.versao !== Rede.VERSAO ? 'A TV está com uma versão antiga do jogo: recarregue a TV (Ctrl+Shift+R) e tente de novo.' : 'A TV não confirmou. Tente de novo.'; render(); }
+  }, 6000);
+  render();
 }
 /* Recorta a foto no centro e reduz para 96 px (fica com poucos KB) */
 $('#foto').onchange = async e => {
@@ -437,7 +451,7 @@ $('#foto').onchange = async e => {
     let q = 0.75, data = cv.toDataURL('image/jpeg', q);
     while(data.length > 20000 && q > 0.3){ q -= 0.15; data = cv.toDataURL('image/jpeg', q); }
     ls('trilha-avatar-' + salaCod + '-' + me.equipe, data);
-    enviar({ t: 'avatar', tipo: 'img', v: data });
+    mandarAvatar({ tipo: 'img', v: data });
   }catch(err){ avatarErro = 'Não deu para abrir essa imagem. Tente outra.'; }
   avatarEnviando = false; render();
 };

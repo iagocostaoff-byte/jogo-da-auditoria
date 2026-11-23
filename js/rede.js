@@ -14,7 +14,8 @@
    Licença MIT.
    ================================================================== */
 (function(){
-  const Rede = { modo: 'off', erro: null, brokerIdx: 0 };
+  // VERSAO: aumente a cada publicação; TV e celular comparam para detectar página antiga em cache
+  const Rede = { modo: 'off', erro: null, brokerIdx: 0, VERSAO: '6' };
   let db = null;
   const params = new URLSearchParams(location.search);
 

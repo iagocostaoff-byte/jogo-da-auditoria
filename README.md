@@ -133,6 +133,10 @@ Tudo fica em `js/conteudo.js`. Procure as marcações:
 Nas perguntas, `correta` é a posição da resposta certa começando em 0. As alternativas são
 embaralhadas a cada partida. Depois de editar, publique de novo (no GitHub, basta enviar o arquivo alterado).
 
+Ao publicar uma mudança no código, aumente `VERSAO` em `js/rede.js` e o `?v=` dos scripts em `index.html` e
+`jogador.html`. Se a TV ficar com a página antiga em cache, os celulares avisam "Versões diferentes":
+recarregue a TV com Ctrl+Shift+R.
+
 ## Avisos
 
 - Os celulares nunca recebem a resposta certa antes da revelação. Mas `js/conteudo.js` é público no site:
