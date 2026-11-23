@@ -92,6 +92,15 @@ Rode um servidor local nesta pasta (por exemplo, `python3 -m http.server`) e abr
 | Carimbo AUDITADO | Acerto em pergunta difícil, caso prático, caso real ou surpresa da CVM |
 | Sem ressalvas | 3 acertos seguidos dão o título no placar, até o primeiro erro |
 | Fragmentadora | Digite ENRON no teclado da TV: a carta (ou o tabuleiro) é triturada |
+| RESSALVADO | Na primeira resposta errada de cada carta, o letreiro aparece por cima da tela em preto e branco, no estilo de videogame |
+| Parecer emitido | Volta completa no tabuleiro mostra o letreiro dourado de missão cumprida |
+| Nível de risco | Os casos reais mostram de 1 a 5 estrelas de risco, como o nível de procurado (Enron, WorldCom, Wirecard e Americanas têm 5) |
+| Cheat negado | Digite AEZAKMI no teclado da TV (o código de "nunca procurado"): o jogo recusa |
+| Vergonha! | Às vezes, ao errar pergunta fácil, a piada vira "Vergonha! Vergonha! Vergonha!" com sino |
+| Lannister | Piada de acerto e carta de revés: "Um Lannister sempre paga suas dívidas" (a circularização discorda) |
+| Casamento Vermelho | Carta de revés: aceitar convite para o casamento do diretor financeiro do cliente |
+| O fechamento está chegando | Aviso quando faltam 5 minutos de jogo |
+| Trono de Ferro | O Auditor-Sócio do mata-mata vira dono do Trono de Ferro dos papéis de trabalho |
 | Prêmios do parecer | No pódio: Cynthia Cooper, Ladrão de Evidências, Fragmentadora de Ouro, Repo 105, Parecer emitido e Abstenção de opinião (quem terminou com zero) |
 
 As regras e pontos das surpresas ficam em `[EDITAR-CONFIG]` (`CASA_FECHAMENTO`, `SEQUENCIA_SEM_RESSALVAS`, `PONTOS.cvm`, `PONTOS.fechamento`).

@@ -152,7 +152,7 @@ function mmRender(){
   if(!mm.participantes.length){
     h += `<div class="warn-box">Ninguém da equipe vencedora está com o celular na sala. Peça para entrarem pelo QR code (tecla Q no jogo) e abra o mata-mata de novo.</div>`;
   } else if(mm.stage === 'fim' && mm.vencedor){
-    h += `<div class="mm-win">${chipHtml(mm.vencedor.equipe)}<div class="titulo">Auditor-Sócio da partida</div><div class="nome">${esc(mm.vencedor.nome)}</div><div class="mm-msg">${esc(state.groups[mm.vencedor.equipe].name)}</div>${empate ? `<div class="info-box">Empate no 1º lugar decidido: ${esc(state.groups[mm.vencedor.equipe].name)} fica em 1º.</div>` : ''}<div class="carimbo bate" style="position:static;transform:rotate(-8deg);color:#E0675B;border-color:#E0675B;margin-top:18px">AUDITADO</div></div>`;
+    h += `<div class="mm-win">${chipHtml(mm.vencedor.equipe)}<div class="titulo">Auditor-Sócio da partida · dono do Trono de Ferro dos papéis de trabalho</div><div class="nome">${esc(mm.vencedor.nome)}</div><div class="mm-msg">${esc(state.groups[mm.vencedor.equipe].name)}</div>${empate ? `<div class="info-box">Empate no 1º lugar decidido: ${esc(state.groups[mm.vencedor.equipe].name)} fica em 1º.</div>` : ''}<div class="carimbo bate" style="position:static;transform:rotate(-8deg);color:#E0675B;border-color:#E0675B;margin-top:18px">AUDITADO</div></div>`;
   } else {
     if(mm.stage === 'pronto'){
       h += `<div class="info-box">Todos respondem ao mesmo tempo, cada um no seu celular, com ${CONFIG.MM_TEMPO} segundos por pergunta. Quem errar ou não responder sai. Se todos errarem, ninguém sai. Na final, ou a partir da ${CONFIG.MM_VELOCIDADE_A_PARTIR}ª pergunta, empate se decide pela velocidade.</div>`;

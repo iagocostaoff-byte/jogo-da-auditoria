@@ -648,6 +648,7 @@ async function movePawn(gi, steps){
         g.pos = 1; g.voltas++;
         g.pts += CONFIG.PONTOS.volta; sfx.ok();
         toast(`Volta completa! Parecer emitido: +${CONFIG.PONTOS.volta} para ${g.name}`);
+        telaGame('Parecer emitido', `+${CONFIG.PONTOS.volta} · ${g.name}`, true);
       } else g.pos++;
     } else {
       g.pos = Math.max(1, g.pos - 1);
@@ -779,7 +780,7 @@ function renderCard(){
     const cap = capitao(c.who);
     const phone = state.sala && c.stage === 'answer' ? `<span class="tag phone">${cap ? `${esc(cap.nome)} responde pelo celular` : 'sem celular: o professor marca'}</span>` : '';
     const title = isReal ? `${esc(q.caso)} · ${esc(q.ano)}` : t.nome;
-    h += band(title, `${q.id} · ${NIVEL[q.nivel]} · ${esc(q.tema)} · ${pts} pontos`, timing);
+    h += band(title, `${q.id} · ${NIVEL[q.nivel]} · ${esc(q.tema)} · ${pts} pontos${q.risco ? ` · Nível de risco <span class="estrelas">${'★'.repeat(q.risco)}<i>${'★'.repeat(5 - q.risco)}</i></span>` : ''}`, timing);
     if(isReal) h += `<div class="stamp">CASO REAL</div>`;
     if(c.tipo === 'cvm') h += `<div class="stamp">DOIS 6 SEGUIDOS · VALE O DOBRO</div>`;
     if(c.stage === 'reveal' && c.result === 'ok' && DIFICEIS.includes(q.nivel)) h += `<div class="carimbo ${c.carimbado ? '' : 'bate'}">AUDITADO</div>`;
@@ -917,7 +918,20 @@ function sequencia(gi, acerto){
 }
 const semRessalvas = g => (g.seq || 0) >= CONFIG.SEQUENCIA_SEM_RESSALVAS;
 function acertou(gi){ ui.pb = false; ui.piada = { tipo: 'ok', txt: piadaDe('ok', gi) }; sfx.ok(); }
-function errou(gi){ ui.pb = true; ui.piada = { tipo: 'no', txt: piadaDe('no', gi) }; sfx.bad(); }
+function errou(gi, nivel){
+  const ja = ui.pb;
+  ui.pb = true; ui.piada = { tipo: 'no', txt: piadaDe('no', gi) }; sfx.bad();
+  // Vergonha! Vergonha! (às vezes, quando erra pergunta fácil)
+  if(nivel === 'facil' && Math.random() < 0.3){ ui.piada.txt = 'Vergonha! Vergonha! Vergonha!'; [0.5, 1.3, 2.1].forEach(s => tone(1320, 0.5, 'sine', 0.05, s)); }
+  if(!ja) telaGame('Ressalvado');
+}
+/* Letreiro de videogame por cima da tela (some sozinho) */
+function telaGame(txt, sub, passed){
+  const d = document.createElement('div');
+  d.className = 'wasted' + (passed ? ' passed' : '');
+  d.innerHTML = `<span>${esc(txt)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>`;
+  document.body.appendChild(d); setTimeout(() => d.remove(), 2000);
+}
 
 function chooseAlt(i){
   const c = ui.card; if(!c || c.kind !== 'q' || c.stage !== 'answer') return;
@@ -938,7 +952,7 @@ function chooseAlt(i){
   if(i >= 0) c.wrong.push(i);
   state.groups[c.who].err++;
   sequencia(c.who, false);
-  errou(c.who); ui.piada.sub = i >= 0 ? `${state.groups[c.who].name} marcou ${LETRAS[i]}` : `${state.groups[c.who].name} não respondeu`;
+  errou(c.who, c.q.nivel); ui.piada.sub = i >= 0 ? `${state.groups[c.who].name} marcou ${LETRAS[i]}` : `${state.groups[c.who].name} não respondeu`;
   if(!c.steal && podemRoubar(c).length){ c.stage = 'steal'; renderCard(); }
   else revealQ();
   renderScores();
@@ -1035,7 +1049,7 @@ setInterval(() => {
     state.rounds = state.round;        // termina ao fim da rodada em andamento
     toast('Tempo de jogo esgotado: esta é a rodada final.'); sfx.end();
     save();
-  } else if(antes > 300 && rl.restante <= 300) toast('Faltam 5 minutos de jogo.');
+  } else if(antes > 300 && rl.restante <= 300) toast('O fechamento está chegando: faltam 5 minutos de jogo.');
   if(Math.ceil(rl.restante) !== antes){ renderHeader(); if(Math.ceil(rl.restante) % 5 === 0) sync(); }
   if(Math.ceil(rl.restante) % 15 === 0) save();
 }, 1000);
@@ -1209,9 +1223,10 @@ document.addEventListener('keydown', e => {
   if(!$('#mm').hidden){ if(k === ' ' || k === 'enter'){ e.preventDefault(); mmAvancar(); } return; }
   if($('#app').hidden || !$('#gab').hidden || !$('#help').hidden) return;
   if(k.length === 1 && /[a-z]/.test(k)){
-    segredo = (segredo + k).slice(-5);
-    if(segredo === 'enron'){ segredo = ''; triturar(); return; }
-    for(let L = Math.min(4, segredo.length); L >= 2; L--){ if('enron'.startsWith(segredo.slice(-L))) return; }   // digitando o código: ignora atalhos
+    segredo = (segredo + k).slice(-7);
+    if(segredo.endsWith('enron')){ segredo = ''; triturar(); return; }
+    if(segredo === 'aezakmi'){ segredo = ''; sfx.bad(); telaGame('Cheat negado', 'continua procurado pela CVM · auditor não usa atalho'); return; }
+    for(const cod of ['enron', 'aezakmi']) for(let L = Math.min(cod.length - 1, segredo.length); L >= 2; L--){ if(cod.startsWith(segredo.slice(-L))) return; }   // digitando um código: ignora atalhos
   }
   if(k === ' ' || k === 'enter'){ e.preventDefault(); primary(); return; }
   const idx = '1234'.indexOf(k) >= 0 ? '1234'.indexOf(k) : 'abcd'.indexOf(k);
