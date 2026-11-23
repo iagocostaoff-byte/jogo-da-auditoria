@@ -20,7 +20,7 @@ let ui = {
   pb: false, piada: null, lastDie: null,
   jogadores: {}, capFix: {}, conectado: false, erroRede: null
 };
-let setupCfg = { n: CONFIG.GRUPOS_PADRAO, names: [], rounds: CONFIG.RODADAS_PADRAO, duracao: CONFIG.DURACAO_PADRAO, tempo: CONFIG.TEMPO_PADRAO, celular: true };
+let setupCfg = { n: CONFIG.GRUPOS_PADRAO, names: [], rounds: CONFIG.RODADAS_PADRAO, duracao: CONFIG.DURACAO_PADRAO, tempo: CONFIG.TEMPO_PADRAO, celular: true, matamata: true };
 let sala = null;       // conexão com os celulares (Rede.hospedar)
 
 function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: ui.history.slice(-20) })); }catch(e){} }
@@ -293,6 +293,12 @@ function buildSetup(){
   segT.innerHTML = CONFIG.TEMPO_OPCOES.map(t => `<button data-t="${t}" class="${t===setupCfg.tempo?'sel':''}">${t} s</button>`).join('');
   segT.onclick = e => { const b = e.target.closest('button'); if(!b) return; readNames(); setupCfg.tempo = +b.dataset.t; buildSetup(); };
 
+  $('#field-mm').hidden = !setupCfg.celular;
+  $('#seg-mm').innerHTML = `
+    <button data-mm="1" class="${setupCfg.matamata ? 'sel' : ''}">Com mata-mata<small>Auditor-Sócio no fim</small></button>
+    <button data-mm="0" class="${!setupCfg.matamata ? 'sel' : ''}">Sem mata-mata<small>termina no pódio</small></button>`;
+  $('#seg-mm').onclick = e => { const b = e.target.closest('button'); if(!b) return; readNames(); setupCfg.matamata = b.dataset.mm === '1'; buildSetup(); };
+
   $('#rules-box').innerHTML = rulesHtml();
   const saved = loadSave();
   $('#btn-resume').hidden = !(saved && saved.state && (saved.state.phase === 'play' || saved.state.phase === 'lobby'));
@@ -309,7 +315,7 @@ function newGame(){
   state = {
     phase: setupCfg.celular ? 'lobby' : 'play', sala: null,
     groups: Array.from({length: setupCfg.n}, (_, i) => ({ name: setupCfg.names[i] || team(i).firma, pts: 0, pos: 0, voltas: 0, skip: false, ok: 0, err: 0, roubos: 0, rouboPts: 0, perdas: 0 })),
-    cur: 0, round: 1, rounds: setupCfg.duracao ? CONFIG.RODADAS_MAXIMO : setupCfg.rounds, tempo: setupCfg.tempo,
+    cur: 0, round: 1, rounds: setupCfg.duracao ? CONFIG.RODADAS_MAXIMO : setupCfg.rounds, tempo: setupCfg.tempo, matamata: setupCfg.celular && setupCfg.matamata,
     relogio: setupCfg.duracao ? { total: setupCfg.duracao * 60, restante: setupCfg.duracao * 60, acabou: false } : null,
     used: { aud: [], aud2: [], eti: [], caso: [], real: [], dil: [], rel: [] },
     log: []
@@ -1075,7 +1081,7 @@ function endGame(){
     const t = team(o.i);
     return `<div class="pod p${k+1}" style="--team:${t.cor};--team-ink:${textColor(t.cor)}">${chipHtml(o.i)}<div class="pname">${esc(o.g.name)}</div><div class="ppts num">${o.g.pts} pontos</div><div class="bar">${k+1}º</div></div>`;
   }).join('');
-  const nota = CONFIG.NOTA ? `<div class="nota"><b>Nota da atividade</b><span>${esc(CONFIG.NOTA.participacao)}</span><span>${esc(CONFIG.NOTA.vencedora)}${tied ? ' · <span class="tie">Empate no 1º lugar: decida no mata-mata</span>' : ''}${decidido ? ' · <span class="tie">Empate decidido no mata-mata</span>' : ''}</span></div>` : '';
+  const nota = CONFIG.NOTA ? `<div class="nota"><b>Nota da atividade</b><span>${esc(CONFIG.NOTA.participacao)}</span><span>${esc(CONFIG.NOTA.vencedora)}${tied ? ` · <span class="tie">Empate no 1º lugar${state.sala && state.matamata !== false ? ': decida no mata-mata' : ''}</span>` : ''}${decidido ? ' · <span class="tie">Empate decidido no mata-mata</span>' : ''}</span></div>` : '';
   const labelTipo = k => (TIPOS[k] ? TIPOS[k].nome : k);
   const review = state.log.length
     ? state.log.map(l => `<div class="rv"><div><code>${esc(l.id)}</code><span class="why">${l.flag ? 'marcada' : ''}${l.flag && l.missed ? ' · ' : ''}${l.missed ? 'errada' : ''}</span></div><div>${esc(l.pergunta)}<br><span class="ans">${esc(l.resposta)}</span><div class="exp">${labelTipo(l.tipo)} · ${esc(l.explicacao)}</div></div></div>`).join('')
@@ -1083,7 +1089,7 @@ function endGame(){
   $('#end-inner').innerHTML = `
     <div class="setup-head" style="justify-content:space-between">
       <div><div class="eyebrow">FACC · UFRJ · Fim de partida</div><h1>Parecer final</h1></div>
-      <div class="actions">${state.sala ? `<button class="big main" id="btn-mm">${state.mm && state.mm.vencedor ? 'Mata-mata de novo' : 'Mata-mata: Auditor-Sócio'}</button>` : ''}<button class="big ghost" id="btn-new">Nova partida</button></div>
+      <div class="actions">${state.sala && state.matamata !== false ? `<button class="big main" id="btn-mm">${state.mm && state.mm.vencedor ? 'Mata-mata de novo' : 'Mata-mata: Auditor-Sócio'}</button>` : ''}<button class="big ghost" id="btn-new">Nova partida</button></div>
     </div>
     ${state.mm && state.mm.vencedor ? `<div class="socio-banner">${chipHtml(state.mm.vencedor.equipe)}<div><small>Auditor-Sócio da partida</small><b>${esc(state.mm.vencedor.nome)}</b></div></div>` : ''}
     <div class="end-podium">${pod}</div>

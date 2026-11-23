@@ -55,7 +55,8 @@ qualquer hospedagem de site. No GitHub Pages: **Settings › Pages › Deploy fr
 
 ### Mata-mata: Auditor-Sócio (uns 5 minutos)
 
-No Parecer final, clique em **Mata-mata: Auditor-Sócio**. Entram todos os integrantes da equipe
+Ao criar a sala, escolha **Com mata-mata** ou **Sem mata-mata** (só aparece no modo pelo celular).
+Com mata-mata, no Parecer final clique em **Mata-mata: Auditor-Sócio**. Entram todos os integrantes da equipe
 vencedora que estão com o celular na sala; se duas ou mais equipes empataram em 1º, entram todas
 elas, e a equipe de quem vencer fica com o 1º lugar.
 
