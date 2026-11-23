@@ -15,7 +15,7 @@
    ================================================================== */
 (function(){
   // VERSAO: aumente a cada publicação; TV e celular comparam para detectar página antiga em cache
-  const Rede = { modo: 'off', erro: null, brokerIdx: 0, VERSAO: '10' };
+  const Rede = { modo: 'off', erro: null, brokerIdx: 0, VERSAO: '11' };
   let db = null;
   const params = new URLSearchParams(location.search);
 

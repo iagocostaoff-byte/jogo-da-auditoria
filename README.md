@@ -167,6 +167,12 @@ recarregue a TV com Ctrl+Shift+R.
 - Os casos reais citam fontes públicas. Confira se há novidades antes de usar: alguns processos ainda estão em andamento.
 - As equipes são firmas fictícias. Os casos reais citam as firmas verdadeiras apenas como fato histórico, com fonte; o jogo não tem relação com essas empresas.
 
+## Fontes
+
+Títulos em Barlow Condensed e textos em Barlow (licença SIL Open Font License, em `fonts/OFL.txt`).
+Os arquivos ficam na pasta `fonts/`, então o jogo não depende do Google Fonts e funciona mesmo se a rede
+da sala bloquear sites externos.
+
 ## Letreiros
 
 `img/ressalvado.png`, `img/parecer-emitido.png` e `img/cheat-negado.png` são imagens prontas feitas com a fonte

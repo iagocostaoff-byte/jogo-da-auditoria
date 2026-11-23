@@ -501,8 +501,8 @@ function buildGeometry(vertical){
   return { vertical, W, H, cells, road, arrows, plaza: map(0, 0), lobe1: map(-0.6*A, 0), lobe2: map(0.6*A, 0) };
 }
 
-const SANS = 'Atkinson Hyperlegible, Segoe UI, Arial, sans-serif';
-const SERIF = 'Bitter, Rockwell, Georgia, serif';
+const SANS = 'Barlow, Segoe UI, Arial, sans-serif';
+const SERIF = 'Barlow Condensed, Arial Narrow, Arial, sans-serif';   // títulos (nome mantido por compatibilidade)
 const INK = '#1B2230';
 
 function renderBoard(){
