@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="claude:viewport-fit-sides" content="cover">
 <title>Trilha de Auditoria</title>
-<link rel="stylesheet" href="fonts/fontes.css?v=12">
+<link rel="stylesheet" href="fonts/fontes.css?v=13">
 <style>
 /* ==================================================================
    TRILHA DE AUDITORIA · FACC/UFRJ · tela da TV (moderador)
@@ -350,6 +350,9 @@ details.mod[open] summary::after{content:' −'}
 
 .end-podium{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin-top:10px}
 .pod{flex:1;max-width:220px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.pod-av{width:78px;height:78px;border-radius:50%;border:5px solid var(--team);background:#F4F1EA;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:42px;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.pod.p1 .pod-av{width:96px;height:96px;font-size:52px}
+.pod-av img{width:100%;height:100%;object-fit:cover}
 .pod .pname{font-family:var(--f-display);font-weight:800;font-size:clamp(16px,1.6vw,26px)}
 .pod .ppts{color:var(--paper);font-weight:700}
 .pod .bar{width:100%;border-radius:12px 12px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:10px;font-family:var(--f-display);font-weight:800;font-size:34px;background:var(--team);color:var(--team-ink);border:2px solid rgba(255,255,255,.25);border-bottom:0}
@@ -643,15 +646,15 @@ details.mod[open] summary::after{content:' −'}
   </div>
 </div>
 
-<link rel="preload" as="image" href="img/ressalvado.png?v=12"><link rel="preload" as="image" href="img/parecer-emitido.png?v=12"><link rel="preload" as="image" href="img/cheat-negado.png?v=12"><link rel="preload" as="image" href="img/revisado.png?v=12"><link rel="preload" as="image" href="img/rodada-final.png?v=12"><link rel="preload" as="image" href="img/auditoria-surpresa.png?v=12">
-<script src="js/firebase-config.js?v=12"></script>
+<link rel="preload" as="image" href="img/ressalvado.png?v=13"><link rel="preload" as="image" href="img/parecer-emitido.png?v=13"><link rel="preload" as="image" href="img/cheat-negado.png?v=13"><link rel="preload" as="image" href="img/revisado.png?v=13"><link rel="preload" as="image" href="img/rodada-final.png?v=13"><link rel="preload" as="image" href="img/auditoria-surpresa.png?v=13">
+<script src="js/firebase-config.js?v=13"></script>
 <script src="js/vendor/firebase-app-compat.js"></script>
 <script src="js/vendor/firebase-database-compat.js"></script>
 <script src="js/vendor/mqtt.min.js"></script>
 <script src="js/vendor/qrcode.js"></script>
-<script src="js/rede.js?v=12"></script>
-<script src="js/conteudo.js?v=12"></script>
-<script src="js/tv.js?v=12"></script>
-<script src="js/matamata.js?v=12"></script>
+<script src="js/rede.js?v=13"></script>
+<script src="js/conteudo.js?v=13"></script>
+<script src="js/tv.js?v=13"></script>
+<script src="js/matamata.js?v=13"></script>
 </body>
 </html>

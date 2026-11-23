@@ -116,6 +116,15 @@ function membros(t){
     .map(([pid, j]) => ({ pid, nome: j.nome || 'Sem nome' }));
 }
 function capitao(t){
+  // Depois que a partida começa, o capitão fica travado (mesmo se o celular dele cair)
+  const fixo = state && state.phase !== 'lobby' && state.capitaoFixo && state.capitaoFixo[t];
+  if(fixo) return { pid: fixo.pid, nome: (ui.jogadores[fixo.pid] && ui.jogadores[fixo.pid].nome) || fixo.nome };
+  const c = capitaoDaSala(t);
+  // equipe que começou sem celular: o primeiro que entrar vira capitão e também fica travado
+  if(c && state && state.phase !== 'lobby'){ (state.capitaoFixo = state.capitaoFixo || {})[t] = { pid: c.pid, nome: c.nome }; save(); }
+  return c;
+}
+function capitaoDaSala(t){
   const ms = membros(t);
   if(!ms.length) return null;
   const fix = ui.capFix[t];
@@ -439,10 +448,16 @@ function renderLobby(){
 $('#teams-grid').addEventListener('click', e => {
   const rm = e.target.closest('[data-rmav]'); if(rm){ removerAvatar(+rm.dataset.rmav); return; }
   const b = e.target.closest('[data-cap]'); if(!b) return;
+  if(state.phase !== 'lobby'){ toast('O capitão fica travado depois que a partida começa.'); return; }
   ui.capFix[+b.dataset.cap] = b.dataset.pid; renderLobby(); sync();
 });
 $('#btn-lobby-go').onclick = () => {
-  if(state.phase === 'lobby'){ state.phase = 'play'; ui.jogadores = travaEquipes(ui.jogadores); enterGame(); beginTurn(); }
+  if(state.phase === 'lobby'){
+    state.phase = 'play'; ui.jogadores = travaEquipes(ui.jogadores);
+    state.capitaoFixo = {};
+    state.groups.forEach((g, i) => { const c = capitaoDaSala(i); if(c) state.capitaoFixo[i] = { pid: c.pid, nome: c.nome }; });
+    enterGame(); beginTurn();
+  }
   else { $('#lobby').hidden = true; renderAll(); }
 };
 $('#btn-lobby-back').onclick = () => { $('#lobby').hidden = true; $('#setup').hidden = false; buildSetup(); };
@@ -1318,7 +1333,7 @@ function endGame(){
   const pod = [1, 0, 2].map(k => {
     const o = order[k]; if(!o) return '';
     const t = team(o.i);
-    return `<div class="pod p${k+1}" style="--d:${[2.1, 1.0, 0.2][k]}s;--team:${t.cor};--team-ink:${textColor(t.cor)}">${chipHtml(o.i)}<div class="pname">${esc(o.g.name)}</div><div class="ppts num">${o.g.pts} pontos</div><div class="bar">${k+1}º</div></div>`;
+    return `<div class="pod p${k+1}" style="--d:${[2.1, 1.0, 0.2][k]}s;--team:${t.cor};--team-ink:${textColor(t.cor)}">${o.g.avatar ? `<span class="pod-av">${o.g.avatar.tipo === 'img' ? `<img src="${o.g.avatar.v}" alt="">` : `<span>${esc(o.g.avatar.v)}</span>`}</span>` : ''}${chipHtml(o.i)}<div class="pname">${esc(o.g.name)}</div><div class="ppts num">${o.g.pts} pontos</div><div class="bar">${k+1}º</div></div>`;
   }).join('');
   const nota = CONFIG.NOTA ? `<div class="nota"><b>Nota da atividade</b><span>${esc(CONFIG.NOTA.participacao)}</span><span>${esc(CONFIG.NOTA.vencedora)}${tied ? ` · <span class="tie">Empate no 1º lugar${state.sala && state.matamata !== false ? ': decida no mata-mata' : ''}</span>` : ''}${decidido ? ' · <span class="tie">Empate decidido no mata-mata</span>' : ''}</span></div>` : '';
   const labelTipo = k => (TIPOS[k] ? TIPOS[k].nome : k);

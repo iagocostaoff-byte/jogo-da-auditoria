@@ -54,7 +54,8 @@ qualquer hospedagem de site. No GitHub Pages: **Settings › Pages › Deploy fr
    O capitão escolhe no celular a **imagem do pino**: um dos emojis ou uma foto da galeria (reduzida
    para poucos KB). Ela anda no tabuleiro no lugar da sigla, com um anel na cor da equipe. Para tirar uma
    imagem imprópria, clique em **remover** ao lado dela nesta tela (durante a partida, tecla **Q**).
-4. Clique em **Começar partida**. A partir daí, cada celular fica preso à equipe que escolheu e a imagem do
+4. Clique em **Começar partida**. A partir daí, cada celular fica preso à equipe que escolheu, o capitão de cada equipe
+   fica travado (se o celular dele cair, o professor marca pelas teclas 1 a 4) e a imagem do
    pino não muda mais (o professor ainda pode remover uma imagem pela tela da sala, tecla **Q**).
    Quando o tempo de uma pergunta acaba, ninguém responde mais: conta como "não respondeu" e abre o Roubo de Evidência. Quem chegar atrasado entra pelo QR code no canto da tela (tecla **Q**).
 
