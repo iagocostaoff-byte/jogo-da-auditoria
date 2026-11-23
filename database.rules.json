@@ -1,0 +1,12 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "salas": {
+      "$sala": {
+        ".read": "$sala.length >= 4 && $sala.length <= 6",
+        ".write": "$sala.length >= 4 && $sala.length <= 6"
+      }
+    }
+  }
+}

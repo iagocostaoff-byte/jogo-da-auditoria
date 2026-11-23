@@ -1,0 +1,107 @@
+# Trilha de Auditoria
+
+Jogo de tabuleiro para revisão de **Auditoria I, Auditoria II e Ética**, criado na FACC/UFRJ.
+Proposta de atividade: Bernardo Furtado, Iago Costa e Thiago Primo.
+
+- A **TV** (computador do professor) mostra o tabuleiro e o placar. O professor modera.
+- Cada equipe é uma firma de auditoria fictícia (Kada Planilha Me Gasta, Erros & Yncertezas, De-Noite, Planilha WhatsApp & Café; Bateu Diferença Ontem e Grande Tormento com 5 ou 6 equipes).
+- As equipes entram por **QR code**. O primeiro celular de cada equipe é o **capitão**: lança o dado e responde.
+  Os outros celulares acompanham a pergunta e o placar.
+- Sem internet, o jogo funciona **só na TV**: o professor marca as respostas ditas em voz alta.
+
+## Arquivos
+
+| Arquivo | Para que serve |
+|---|---|
+| `index.html` | Tela da TV (abra no computador ligado à TV) |
+| `jogador.html` | Tela dos celulares (aberta pelo QR code) |
+| `js/conteudo.js` | **Perguntas, casos reais, piadas, regras e pontuação. É o arquivo para editar.** |
+| `js/firebase-config.js` | Configuração do Firebase (opcional) |
+| `js/tv.js`, `js/rede.js` | Lógica do jogo e da conexão |
+| `js/vendor/` | Cliente MQTT, Firebase SDK e gerador de QR code (bibliotecas de código aberto) |
+
+## Como os celulares se conectam
+
+Sem configurar nada, o jogo usa um **servidor público e gratuito de mensagens** (MQTT via WebSocket:
+EMQX, HiveMQ ou Mosquitto, nessa ordem). A TV usa o primeiro que responder e o QR code leva os celulares
+para o mesmo servidor. Funciona com celulares em qualquer rede (Wi-Fi ou 4G).
+
+Esses servidores são públicos e sem garantia de funcionamento: teste antes da aula. Algumas redes de
+universidade bloqueiam as portas usadas (8084, 8884, 8081); nesse caso, use o 4G ou outra rede.
+
+### Opcional: Firebase
+
+Para uma conexão com mais garantia, dá para usar o Firebase Realtime Database (gratuito):
+
+1. Em <https://console.firebase.google.com>, crie um projeto e, em **Criação › Realtime Database**, um banco no modo bloqueado.
+2. Na aba **Regras** do banco, cole o conteúdo de `database.rules.json` e clique em **Publicar**.
+3. Em **Visão geral › Web (`</>`)**, registre um app e cole o `firebaseConfig` em `js/firebase-config.js`, no lugar de `null`
+   (confira se tem a linha `databaseURL`).
+4. Publique de novo. Com o Firebase configurado, o jogo passa a usá-lo no lugar do servidor público.
+
+## Publicar
+
+O jogo é só um conjunto de arquivos estáticos: funciona no GitHub Pages, Netlify, Firebase Hosting ou
+qualquer hospedagem de site. No GitHub Pages: **Settings › Pages › Deploy from a branch › main / (root)**.
+
+## Em sala
+
+1. No computador ligado à TV, abra o endereço publicado no Chrome ou Edge e aperte **F** para tela cheia.
+   Na tela da sala deve aparecer "Conectado ao servidor".
+2. Escolha **Pelo celular**, o número de equipes, a duração e o tempo, e clique em **Criar sala**.
+3. Os alunos apontam a câmera para o QR code, digitam o nome e escolhem a equipe.
+   Toque num nome na tela da sala para trocar o capitão.
+4. Clique em **Começar partida**. Quem chegar atrasado entra pelo QR code no canto da tela (tecla **Q**).
+
+### Atalhos do moderador
+
+| Tecla | Ação |
+|---|---|
+| Espaço / Enter | Lançar o dado, próximo turno |
+| 1 a 4 | Marcar a alternativa dita (equipe sem celular) |
+| M | Marcar a carta para discussão no fim |
+| Q | Mostrar o QR code da sala |
+| P | Pausar o tempo |
+| Z | Desfazer o turno |
+| F | Tela cheia |
+
+### Testar sem internet
+
+Rode um servidor local nesta pasta (por exemplo, `python3 -m http.server`) e abra
+`http://localhost:8000/?modo=local`: o link da sala aberto em outras abas do mesmo navegador simula os celulares.
+
+## Como editar perguntas e regras
+
+Tudo fica em `js/conteudo.js`. Procure as marcações:
+
+| Marcação | O que muda |
+|---|---|
+| `[EDITAR-CONFIG]` | pontos, tempos, rodadas, texto da nota |
+| `[EDITAR-EQUIPES]` | firmas, cores e siglas das equipes |
+| `[EDITAR-TRILHA]` | ordem das 36 casas |
+| `[EDITAR-AUDITORIA]` | perguntas de Auditoria I |
+| `[EDITAR-AUDITORIA2]` | perguntas de Auditoria II (ativo não circulante) |
+| `[EDITAR-ETICA]` | perguntas de Ética |
+| `[EDITAR-CASOS]` | casos práticos fictícios |
+| `[EDITAR-REAIS]` | casos reais, com contexto, piada e fonte |
+| `[EDITAR-DILEMAS]` | dilemas éticos de resposta aberta |
+| `[EDITAR-RELAMPAGO]` | verdadeiro ou falso para todas as equipes |
+| `[EDITAR-EVENTOS]` | sorte ou revés e perde a vez |
+| `[EDITAR-PIADAS]` | frases de acerto e de erro |
+
+Nas perguntas, `correta` é a posição da resposta certa começando em 0. As alternativas são
+embaralhadas a cada partida. Depois de editar, publique de novo (no GitHub, basta enviar o arquivo alterado).
+
+## Avisos
+
+- Os celulares nunca recebem a resposta certa antes da revelação. Mas `js/conteudo.js` é público no site:
+  um aluno curioso pode abrir o arquivo. Se isso preocupar, não divulgue o endereço do site, só o QR code.
+- Quem souber o código da sala pode ler o que passa por ela (placar, nomes digitados). Para uma atividade
+  de sala de aula isso basta; peça só o primeiro nome e não guarde dados pessoais no jogo.
+- Os casos reais citam fontes públicas. Confira se há novidades antes de usar: alguns processos ainda estão em andamento.
+- As equipes são firmas fictícias. Os casos reais citam as firmas verdadeiras apenas como fato histórico, com fonte; o jogo não tem relação com essas empresas.
+
+## Licença
+
+MIT (veja `LICENSE`). Bibliotecas incluídas: MQTT.js (MIT), Firebase SDK (Apache 2.0, Google) e
+qrcode-generator (MIT, Kazuhiko Arase).

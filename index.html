@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Trilha de Auditoria</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bitter:wght@600;800&display=swap">
+<style>
+/* ==================================================================
+   TRILHA DE AUDITORIA · FACC/UFRJ · tela da TV (moderador)
+   Auditoria I, Auditoria II e Ética
+   Proposta: Bernardo Furtado, Iago Costa e Thiago Primo
+   Licença MIT. O conteúdo editável fica em js/conteudo.js.
+   ================================================================== */
+
+/* Layout: sala escura em volta de um tabuleiro de papel e tinta.
+   As únicas cores vivas da tela são as das equipes. */
+:root{
+  color-scheme: dark;
+  --room:#11151C;
+  --panel:#1A2029;
+  --panel-2:#232B36;
+  --line:rgba(226,232,240,.13);
+  --ink:#EEECE6;
+  --ink-soft:#A3ABB8;
+  --paper:#F3F0E7;
+  --paper-2:#E6E1D3;
+  --paper-ink:#1B2230;
+  --paper-soft:#5C6170;
+  --stamp:#9E3A31;
+  --ok:#2F8A5C;
+  --bad:#B4433A;
+  --f-display:'Bitter', Rockwell, 'Roboto Slab', 'Zilla Slab', Georgia, serif;
+  --f-body:'Atkinson Hyperlegible', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0;background:var(--room);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  overflow:hidden;
+}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:disabled{cursor:default}
+button:focus-visible,input:focus-visible{outline:3px solid var(--paper);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+.num{font-variant-numeric:tabular-nums}
+kbd{font-family:var(--f-body)}
+
+/* Preto e branco quando a equipe erra; volta ao normal na troca de vez */
+#app,.screen{transition:filter .7s ease}
+body.pb #app{filter:grayscale(1) contrast(.96)}
+body.pb .card{animation:shakeX .45s ease}
+@keyframes shakeX{0%,100%{transform:none}20%{transform:translateX(-10px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+
+/* ---------------- Estrutura ---------------- */
+#app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;padding-block:10px}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand h1{font-weight:800;font-size:clamp(20px,1.8vw,34px)}
+.brand .sub{font-size:clamp(11px,.75vw,14px);color:var(--ink-soft);letter-spacing:.16em;text-transform:uppercase}
+.room-badge{display:flex;align-items:center;gap:10px;background:var(--paper);color:var(--paper-ink);border-radius:12px;padding:6px 12px 6px 6px;font-weight:700}
+.room-badge .mini-qr{width:44px;height:44px;background:#fff;border-radius:6px;padding:2px}
+.room-badge .mini-qr svg{width:100%;height:100%;display:block}
+.room-badge small{display:block;font-weight:400;color:var(--paper-soft);font-size:12px}
+.room-badge .code{font-family:var(--f-display);font-size:22px;letter-spacing:.08em}
+.round-box{margin-left:auto;display:flex;align-items:center;gap:12px;color:var(--ink-soft);font-size:clamp(13px,.95vw,18px)}
+.round-box strong{color:var(--ink);font-family:var(--f-display);font-size:1.35em}
+.dots{display:flex;gap:5px}
+.dots i{width:11px;height:11px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--paper-2)}
+.dots i.now{background:var(--paper);box-shadow:0 0 0 3px rgba(243,240,231,.25)}
+.last-round{background:var(--stamp);color:#fff;font-weight:700;padding:3px 10px;border-radius:20px;font-size:.8em;letter-spacing:.06em}
+
+.game{display:grid;grid-template-columns:minmax(0,1fr) clamp(300px,25vw,440px);gap:14px;min-height:0}
+.stage{position:relative;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center}
+#board{display:block;width:100%;height:100%}
+#board text{pointer-events:none}
+.pawn{transition:transform .26s ease-out}
+.pawn .pawn-body{transform:scale(1.2)}
+.pawn.active .pawn-body{animation:bounce .9s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:scale(1.55) translateY(0)}50%{transform:scale(1.55) translateY(-7px)}}
+#cell-hl{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.4}}
+
+.ribbon{
+  position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:5;
+  display:flex;align-items:center;gap:10px;background:rgba(17,21,28,.92);border:1px solid var(--line);
+  border-radius:40px;padding:6px 16px 6px 8px;font-size:clamp(13px,1vw,19px);white-space:nowrap;max-width:100%;
+}
+.ribbon .hint{color:var(--ink-soft)}
+.ribbon kbd{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--paper)}
+.toast{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:30;
+  background:var(--paper);color:var(--paper-ink);font-weight:700;padding:10px 18px;border-radius:12px;
+  font-size:clamp(14px,1.1vw,20px);box-shadow:0 8px 24px rgba(0,0,0,.45);max-width:92%;text-align:center;
+  animation:toastIn .25s ease-out;
+}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* ---------------- Coluna lateral ---------------- */
+.side{display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto;padding-right:2px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.panel-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px;display:flex;justify-content:space-between}
+.turn-panel{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center}
+.turn-who{min-width:0}
+.turn-who .label{font-size:12px;color:var(--ink-soft);letter-spacing:.1em;text-transform:uppercase}
+.turn-who .name{font-family:var(--f-display);font-weight:800;font-size:clamp(18px,1.45vw,28px);line-height:1.15;overflow-wrap:anywhere}
+.turn-who .where{font-size:13px;color:var(--ink-soft)}
+.die{
+  width:clamp(64px,5.2vw,92px);aspect-ratio:1;border-radius:16px;background:#FBFAF5;
+  box-shadow:inset 0 -6px 0 rgba(0,0,0,.12),0 6px 14px rgba(0,0,0,.35);
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:14%;gap:6%;
+}
+.die i{border-radius:50%;background:#1B2230;opacity:0;transform:scale(.85)}
+.die i.on{opacity:1}
+.die.rolling{animation:shake .12s linear infinite}
+@keyframes shake{0%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}100%{transform:rotate(-8deg)}}
+.btn-roll{
+  grid-column:1/-1;background:var(--team,var(--paper));color:var(--team-ink,var(--paper-ink));font-weight:700;border-radius:12px;padding:12px;
+  font-size:clamp(15px,1.15vw,21px);display:flex;justify-content:center;align-items:center;gap:10px;
+  box-shadow:inset 0 -4px 0 rgba(0,0,0,.18);
+}
+.btn-roll:disabled{background:var(--panel-2);color:var(--ink-soft);box-shadow:none}
+.btn-roll kbd{font-size:.75em;background:rgba(0,0,0,.15);border-radius:5px;padding:1px 6px}
+.turn-note{grid-column:1/-1;font-size:13px;color:var(--ink-soft);text-align:center;margin-top:-4px}
+
+.score-list{display:flex;flex-direction:column;gap:6px}
+.score-row{
+  display:grid;grid-template-columns:22px 44px minmax(0,1fr) auto;align-items:center;gap:8px;
+  padding:7px 8px;border-radius:10px;background:var(--panel-2);border:1px solid transparent;
+  border-left:5px solid var(--team);
+}
+.score-row.now{border-color:var(--paper-2);border-left-color:var(--team);background:#2C3644}
+.score-row .rk{font-weight:700;color:var(--ink-soft);text-align:center}
+.score-row .nm{min-width:0}
+.score-row .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(14px,1vw,18px)}
+.score-row .nm span{font-size:12px;color:var(--ink-soft);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.score-row .pts{font-family:var(--f-display);font-weight:800;font-size:clamp(20px,1.5vw,28px);text-align:right;color:var(--paper)}
+.adj{display:flex;gap:4px;justify-content:flex-end;margin-top:2px}
+.adj button{font-size:11px;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.08);color:var(--ink-soft)}
+.adj button:hover{background:rgba(255,255,255,.18);color:var(--ink)}
+.chip{
+  min-width:30px;height:30px;padding:0 6px;border-radius:15px;display:inline-flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:12px;letter-spacing:.02em;border:2px solid #14181F;flex:none;
+}
+details.mod summary{cursor:pointer;list-style:none;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+details.mod summary::-webkit-details-marker{display:none}
+details.mod summary::after{content:' +'}
+details.mod[open] summary::after{content:' −'}
+.mod-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.mod-grid button{
+  background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:8px 6px;font-size:13px;
+  display:flex;justify-content:space-between;align-items:center;gap:6px;text-align:left;
+}
+.mod-grid button:hover{border-color:var(--paper-2)}
+.mod-grid button kbd{font-size:11px;color:var(--ink-soft)}
+.mod-grid .danger{color:#F0A49C}
+.legend{display:flex;flex-wrap:wrap;gap:6px 10px}
+.legend span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft)}
+.legend i{width:16px;height:16px;border-radius:4px;display:block;border-left:5px solid}
+
+/* ---------------- Cartas ---------------- */
+.card-layer{
+  position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+  background:rgba(8,10,14,.62);padding:8px;
+}
+.card{
+  width:min(100%,1060px);max-height:100%;overflow:auto;background:var(--paper);color:var(--paper-ink);
+  border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.55);animation:cardIn .35s cubic-bezier(.2,.9,.3,1.2);
+  display:flex;flex-direction:column;position:relative;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(24px) rotate(-1.5deg) scale(.96)}to{opacity:1;transform:none}}
+.card-band{background:var(--cat);color:#fff;display:flex;align-items:center;gap:14px;padding:12px 20px;flex-wrap:wrap}
+.card-band .cat{min-width:0;flex:1}
+.card-band .cat-name{font-family:var(--f-display);font-weight:800;font-size:clamp(18px,1.6vw,30px);display:block;line-height:1.1}
+.card-band .cat-meta{font-size:clamp(12px,.9vw,16px);opacity:.9;letter-spacing:.04em}
+.timer{display:flex;align-items:center;gap:10px}
+.t-num{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,2.4vw,44px);min-width:2.2ch;text-align:right}
+.t-num.warn{color:#FFD2CA}
+.t-btn{background:rgba(255,255,255,.18);color:#fff;border-radius:8px;padding:6px 10px;font-size:13px}
+.t-track{height:8px;background:rgba(27,34,48,.12)}
+#t-bar{height:100%;background:var(--cat);width:100%;transition:width 1s linear}
+#t-bar.warn{background:var(--bad)}
+.card-body{padding:clamp(14px,1.6vw,28px) clamp(16px,2vw,34px);display:flex;flex-direction:column;gap:clamp(10px,1.2vw,20px)}
+.who{display:flex;align-items:center;gap:10px;font-size:clamp(14px,1.05vw,19px);color:var(--paper-soft);flex-wrap:wrap}
+.who b{color:var(--paper-ink)}
+.tag{border-radius:20px;padding:2px 10px;font-weight:700;font-size:.9em}
+.tag.steal{background:#EFE2CC;color:#6A4610}
+.tag.house{background:#F0D6D1;color:#7E2A22}
+.tag.phone{background:#DDE4EE;color:#26344A}
+.situacao{font-size:clamp(15px,1.25vw,23px);color:var(--paper-soft);border-left:4px solid var(--cat);padding-left:14px;margin:0}
+.q-text{font-size:clamp(20px,2.1vw,40px);font-weight:700;line-height:1.25;margin:0;text-wrap:pretty}
+.alts{display:grid;grid-template-columns:1fr 1fr;gap:clamp(8px,.9vw,14px)}
+.alt{
+  display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;text-align:left;
+  background:#fff;border:2px solid #D8D2C2;border-radius:14px;padding:clamp(10px,1vw,16px);
+  font-size:clamp(15px,1.35vw,25px);line-height:1.25;color:var(--paper-ink);transition:border-color .15s,background .15s;
+}
+.alt:not(:disabled):hover{border-color:var(--cat)}
+.alt .lt{
+  width:clamp(30px,2.3vw,44px);aspect-ratio:1;border-radius:10px;background:var(--cat);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:800;font-family:var(--f-display);
+}
+.alt.pending{border-color:var(--paper-ink);background:#E9E5DA;animation:pulse 0.8s ease-in-out infinite}
+.alt.right{background:#DCEFE3;border-color:var(--ok)}
+.alt.right .lt{background:var(--ok)}
+.alt.wrong{background:#F5DCD8;border-color:var(--bad);opacity:.85}
+.alt.wrong .lt{background:var(--bad)}
+.alt.dim{opacity:.45}
+.verdict{
+  display:flex;align-items:center;gap:14px;border-radius:12px;padding:12px 16px;font-size:clamp(17px,1.6vw,30px);
+  font-family:var(--f-display);font-weight:800;line-height:1.2;
+}
+.verdict.ok{background:#1E6A45;color:#fff}
+.verdict.no{background:#2A2E37;color:#fff}
+.verdict small{display:block;font-family:var(--f-body);font-weight:400;font-size:.55em;opacity:.85}
+.explain{background:var(--paper-2);border-radius:12px;padding:12px 16px;font-size:clamp(14px,1.15vw,21px)}
+.explain .res{font-family:var(--f-display);font-weight:800;font-size:1.1em;margin-bottom:4px}
+.explain .norma{display:inline-block;margin-top:6px;font-size:.8em;color:var(--paper-soft);letter-spacing:.04em}
+.joke{
+  display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;background:#fff;border:2px dashed var(--stamp);
+  border-radius:12px;padding:12px 16px;font-size:clamp(15px,1.2vw,22px);
+}
+.joke b{font-family:var(--f-display);color:var(--stamp);font-size:.8em;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;padding-top:.2em}
+.stamp{
+  position:absolute;top:14px;right:22px;transform:rotate(-8deg);border:3px solid var(--stamp);color:var(--stamp);
+  font-family:var(--f-display);font-weight:800;letter-spacing:.12em;padding:2px 10px;border-radius:6px;
+  font-size:clamp(14px,1.2vw,22px);background:rgba(255,255,255,.92);pointer-events:none;
+}
+.keys{margin:0;padding-left:1.2em;font-size:clamp(15px,1.2vw,22px);display:flex;flex-direction:column;gap:4px}
+.vf{display:flex;gap:12px;justify-content:center}
+.vf div{
+  font-family:var(--f-display);font-weight:800;font-size:clamp(22px,2.4vw,44px);padding:8px 28px;border-radius:14px;
+  border:3px solid #D8D2C2;color:var(--paper-soft)
+}
+.vf div.right{border-color:var(--ok);background:#DCEFE3;color:#1C6B43}
+.answered{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:clamp(13px,1vw,17px);color:var(--paper-soft)}
+.answered .chip{opacity:.3}
+.answered .chip.on{opacity:1}
+.card-foot{
+  border-top:1px solid #DAD3C1;padding:12px clamp(16px,2vw,34px);display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--paper-2);border-radius:0 0 18px 18px;
+}
+.card-foot .note{flex:1;min-width:200px;font-size:clamp(13px,.95vw,17px);color:var(--paper-soft)}
+.cbtn{
+  border-radius:10px;padding:10px 16px;font-weight:700;font-size:clamp(14px,1vw,18px);
+  background:#fff;border:2px solid #CDC6B2;color:var(--paper-ink);display:inline-flex;align-items:center;gap:8px;
+}
+.cbtn:hover{border-color:var(--paper-ink)}
+.cbtn.primary{background:var(--paper-ink);color:#fff;border-color:var(--paper-ink)}
+.cbtn.good{background:var(--ok);border-color:var(--ok);color:#fff}
+.cbtn.bad{background:#fff;border-color:var(--bad);color:#8E2F27}
+.cbtn.flag.on{background:#F0D6D1;border-color:var(--stamp);color:#7E2A22}
+.cbtn kbd{font-size:.75em;opacity:.75}
+.cbtn.group{padding:5px 12px 5px 6px}
+.cbtn.group.on{background:#DCEFE3;border-color:var(--ok)}
+.event-text{font-size:clamp(18px,1.8vw,32px);line-height:1.3;margin:0}
+.event-effect{font-family:var(--f-display);font-weight:800;font-size:clamp(22px,2.2vw,40px);color:var(--paper-ink)}
+
+/* ---------------- Telas cheias ---------------- */
+.screen{
+  position:fixed;inset:0;z-index:50;background:var(--room);overflow-y:auto;
+  padding:max(20px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(20px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+}
+.screen-inner{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.setup-head{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:16px}
+.setup-head .eyebrow{color:var(--ink-soft);letter-spacing:.16em;text-transform:uppercase;font-size:13px}
+.setup-head h1{font-size:clamp(34px,4vw,64px);font-weight:800;line-height:1}
+.setup-head p{color:var(--ink-soft);max-width:62ch;margin:6px 0 0}
+.firm-strip{display:flex;height:6px;border-radius:3px;overflow:hidden;width:min(100%,420px);margin-top:12px}
+.firm-strip i{flex:1}
+.setup-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+.field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.field > .lbl{font-weight:700;font-size:15px}
+.field > .help{font-size:13px;color:var(--ink-soft);margin-top:-4px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:700;min-width:56px;text-align:left}
+.seg button small{display:block;font-weight:400;font-size:11px;color:var(--ink-soft)}
+.seg button.sel{background:var(--paper);color:var(--paper-ink);border-color:var(--paper)}
+.seg button.sel small{color:var(--paper-soft)}
+.seg button:disabled{opacity:.45}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.name-row{display:flex;align-items:center;gap:8px}
+.name-row input{
+  flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;color:var(--ink);
+  padding:9px 10px;font:inherit;
+}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.big{border-radius:12px;padding:13px 22px;font-weight:700;font-size:17px}
+.big.main{background:var(--paper);color:var(--paper-ink)}
+.big.ghost{border:1px solid var(--line);background:var(--panel-2)}
+.rules h3{font-size:20px;margin-bottom:8px}
+.rules ol{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:7px;color:var(--ink)}
+.rules li{line-height:1.45}
+.rules .types{display:grid;gap:6px;margin-top:12px}
+.rules .types div{display:grid;grid-template-columns:16px 1fr;gap:8px;align-items:start;font-size:14px;color:var(--ink-soft)}
+.rules .types i{width:16px;height:16px;border-radius:4px;margin-top:2px;border-left:5px solid}
+.rules .types b{color:var(--ink)}
+.credits{font-size:13px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:12px}
+.warn-box{background:rgba(180,67,58,.14);border:1px solid rgba(180,67,58,.4);border-radius:12px;padding:10px 14px;color:#F2C0BA}
+.info-box{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;color:var(--ink-soft);font-size:14px}
+
+/* Sala (QR code) */
+.lobby{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:22px;align-items:start}
+.qr-card{background:var(--paper);color:var(--paper-ink);border-radius:18px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.qr-card .qr{width:100%;max-width:320px;aspect-ratio:1;background:#fff;border-radius:10px;padding:6px}
+.qr-card .qr svg{width:100%;height:100%;display:block}
+.qr-card .code-big{font-family:var(--f-display);font-weight:800;font-size:54px;letter-spacing:.12em;line-height:1}
+.qr-card .url{font-size:13px;color:var(--paper-soft);word-break:break-all}
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.team-col{background:var(--panel);border:1px solid var(--line);border-top:5px solid var(--team);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.team-col h3{font-size:20px;display:flex;align-items:center;gap:8px}
+.member{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--panel-2);border-radius:8px;padding:6px 10px;font-size:14px;text-align:left;width:100%}
+.member .role{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+.member.cap{outline:2px solid var(--paper-2)}
+.member.cap .role{color:var(--paper)}
+.empty{font-size:13px;color:var(--ink-soft)}
+
+.end-podium{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin-top:10px}
+.pod{flex:1;max-width:220px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.pod .pname{font-family:var(--f-display);font-weight:800;font-size:clamp(16px,1.6vw,26px)}
+.pod .ppts{color:var(--paper);font-weight:700}
+.pod .bar{width:100%;border-radius:12px 12px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:10px;font-family:var(--f-display);font-weight:800;font-size:34px;background:var(--team);color:var(--team-ink);border:2px solid rgba(255,255,255,.25);border-bottom:0}
+.pod.p1 .bar{height:170px}.pod.p2 .bar{height:120px}.pod.p3 .bar{height:85px}
+.nota{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px;display:flex;gap:10px 24px;flex-wrap:wrap;align-items:center}
+.nota b{font-family:var(--f-display);font-size:18px}
+.nota span{color:var(--ink-soft)}
+.tie{background:var(--stamp);color:#fff;border-radius:20px;padding:2px 10px;font-size:13px;font-weight:700}
+.end-table{width:100%;border-collapse:collapse;font-size:16px}
+.end-table th,.end-table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
+.end-table th{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.end-table td.n{text-align:right;font-variant-numeric:tabular-nums}
+.review h2{font-size:24px;margin-bottom:4px}
+.review > p{color:var(--ink-soft);margin:0 0 8px}
+.rv{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.rv code{font-family:var(--f-body);font-weight:700;color:var(--paper)}
+.rv .why{font-size:12px;color:var(--ink-soft);display:block}
+.rv .ans{color:#93D6B0;font-weight:700}
+.rv .exp{color:var(--ink-soft);font-size:14px}
+.confetti{position:fixed;top:-20px;width:10px;height:16px;z-index:51;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(112vh) rotate(540deg)}}
+
+.gab-sec{display:flex;flex-direction:column;gap:8px}
+.gab-sec h2{font-size:22px;border-bottom:3px solid var(--line);padding-bottom:4px}
+.gab-item{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.gab-item code{color:var(--paper);font-family:var(--f-body);font-weight:700}
+.gab-item .ans{color:#93D6B0;font-weight:700}
+.gab-item ul{margin:4px 0 0;padding-left:1.1em;color:#93D6B0}
+
+.modal-back{position:fixed;inset:0;z-index:80;background:rgba(4,6,10,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:460px;width:100%;display:flex;flex-direction:column;gap:14px}
+.modal p{margin:0;font-size:17px}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  #app{height:auto}
+  .game{grid-template-columns:1fr}
+  .stage{min-height:62vh;flex-direction:column}
+  .ribbon{position:static;transform:none;margin-bottom:8px}
+  .card-layer{position:fixed;padding:10px}
+  .alts{grid-template-columns:1fr}
+  .setup-grid,.names,.lobby{grid-template-columns:1fr}
+  .side{overflow:visible}
+  .stamp{position:static;align-self:flex-start;margin:12px 0 0 16px}
+}
+@media (prefers-reduced-motion:reduce){
+  .pawn{transition:none}.pawn.active .pawn-body{animation:none;transform:scale(1.55)}
+  #cell-hl,.die.rolling,.card,.toast,.alt.pending,body.pb .card{animation:none}
+  .confetti{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= TELA INICIAL ======================= -->
+<section class="screen" id="setup">
+  <div class="screen-inner">
+    <div class="setup-head">
+      <div>
+        <div class="eyebrow">Faculdade de Administração e Ciências Contábeis · UFRJ</div>
+        <h1>Trilha de Auditoria</h1>
+        <p>Revisão de Auditoria I, Auditoria II e Ética num tabuleiro em 8, com casos reais de auditoria. A TV mostra o tabuleiro e o placar; as equipes respondem pelo celular.</p>
+        <div class="firm-strip" id="firm-strip"></div>
+      </div>
+    </div>
+
+    <div class="setup-grid">
+      <div class="panel">
+        <div class="field">
+          <span class="lbl">Como as equipes respondem</span>
+          <div class="seg" id="seg-modo"></div>
+          <span class="help" id="modo-help"></span>
+        </div>
+        <div class="field">
+          <span class="lbl">Número de equipes</span>
+          <div class="seg" id="seg-n"></div>
+        </div>
+        <div class="field">
+          <span class="lbl">Equipes</span>
+          <span class="help">Cada equipe é uma firma de auditoria. Se quiser, troque o nome.</span>
+          <div class="names" id="names"></div>
+        </div>
+        <div class="field">
+          <span class="lbl">Duração da partida</span>
+          <div class="seg" id="seg-rounds"></div>
+        </div>
+        <div class="field">
+          <span class="lbl">Tempo para responder</span>
+          <div class="seg" id="seg-tempo"></div>
+        </div>
+        <div class="actions">
+          <button class="big main" id="btn-start">Criar sala</button>
+          <button class="big ghost" id="btn-resume" hidden>Retomar partida salva</button>
+          <button class="big ghost" id="btn-gab">Gabarito do moderador</button>
+        </div>
+      </div>
+
+      <div class="panel rules">
+        <div id="rules-box"></div>
+        <p class="credits">Proposta de atividade: Bernardo Furtado, Iago Costa e Thiago Primo · FACC/UFRJ. Código aberto (licença MIT).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= SALA (QR CODE) ======================= -->
+<section class="screen" id="lobby" hidden>
+  <div class="screen-inner">
+    <div class="setup-head" style="justify-content:space-between">
+      <div>
+        <div class="eyebrow">Sala da partida</div>
+        <h1>Entrem pelo celular</h1>
+        <p>Aponte a câmera para o QR code. O primeiro celular de cada equipe vira o <b>capitão</b>: ele lança o dado e responde. Os outros acompanham. Toque num nome para trocar o capitão.</p>
+      </div>
+      <div class="actions">
+        <button class="big main" id="btn-lobby-go">Começar partida</button>
+        <button class="big ghost" id="btn-lobby-back">Voltar</button>
+      </div>
+    </div>
+    <div class="lobby">
+      <div class="qr-card">
+        <div class="qr" id="qr-big"></div>
+        <div class="code-big" id="code-big"></div>
+        <div class="url" id="join-url"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <div id="lobby-warn"></div>
+        <div class="teams-grid" id="teams-grid"></div>
+        <div class="info-box" id="spectators"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= JOGO ======================= -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="brand">
+      <h1>Trilha de Auditoria</h1>
+      <div class="sub">FACC · UFRJ — Auditoria I, II e Ética</div>
+    </div>
+    <button class="room-badge" id="room-badge" hidden title="Mostrar QR code da sala (Q)">
+      <span class="mini-qr" id="qr-mini"></span>
+      <span><small>Sala</small><span class="code" id="code-mini"></span></span>
+      <span><small>Celulares</small><span id="phones-mini">0</span></span>
+    </button>
+    <div class="round-box" id="round-box"></div>
+  </header>
+
+  <main class="game">
+    <div class="stage" id="stage">
+      <div class="ribbon" id="ribbon"></div>
+      <svg id="board" viewBox="0 0 1000 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tabuleiro em forma de 8"></svg>
+      <div class="card-layer" id="card-layer" hidden></div>
+      <div id="toast-slot"></div>
+    </div>
+
+    <aside class="side">
+      <div class="panel">
+        <div class="turn-panel">
+          <div class="die" id="die"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="turn-who" id="turn-who"></div>
+          <button class="btn-roll" id="btn-roll"></button>
+          <div class="turn-note" id="turn-note"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><span>Placar</span></div>
+        <div class="score-list" id="score-list"></div>
+      </div>
+
+      <div class="panel">
+        <details class="mod">
+          <summary>Moderação</summary>
+          <div class="mod-grid">
+            <button id="m-undo">Desfazer turno <kbd>Z</kbd></button>
+            <button id="m-pause">Pausar tempo <kbd>P</kbd></button>
+            <button id="m-full">Tela cheia <kbd>F</kbd></button>
+            <button id="m-sound">Som: ligado <kbd>S</kbd></button>
+            <button id="m-room">Sala e QR code <kbd>Q</kbd></button>
+            <button id="m-rules">Regras <kbd>H</kbd></button>
+            <button id="m-gab" style="grid-column:1/-1">Gabarito</button>
+            <button id="m-end" class="danger" style="grid-column:1/-1">Encerrar partida e ver pódio</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><span>Casas</span></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- ======================= FIM ======================= -->
+<section class="screen" id="end" hidden>
+  <div class="screen-inner" id="end-inner"></div>
+</section>
+
+<!-- ======================= GABARITO / REGRAS ======================= -->
+<section class="screen" id="gab" hidden>
+  <div class="screen-inner" id="gab-inner"></div>
+</section>
+<section class="screen" id="help" hidden>
+  <div class="screen-inner">
+    <div class="setup-head" style="justify-content:space-between">
+      <h1 style="font-size:40px">Como jogar</h1>
+      <button class="big main" data-close="help">Voltar ao jogo</button>
+    </div>
+    <div class="panel rules" id="rules-box-2"></div>
+  </div>
+</section>
+
+<div class="modal-back" id="confirm" hidden>
+  <div class="modal">
+    <p id="confirm-msg"></p>
+    <div class="actions">
+      <button class="big main" id="confirm-ok">Confirmar</button>
+      <button class="big ghost" id="confirm-cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/firebase-config.js"></script>
+<script src="js/vendor/firebase-app-compat.js"></script>
+<script src="js/vendor/firebase-database-compat.js"></script>
+<script src="js/vendor/mqtt.min.js"></script>
+<script src="js/vendor/qrcode.js"></script>
+<script src="js/rede.js"></script>
+<script src="js/conteudo.js"></script>
+<script src="js/tv.js"></script>
+</body>
+</html>
