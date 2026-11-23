@@ -532,12 +532,13 @@ function renderBoard(){
   });
   s += `<polygon id="cell-hl-base" points="" fill="none" stroke="${INK}" stroke-width="10" stroke-linejoin="round"/>
   <polygon id="cell-hl" points="" fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
-  <circle cx="${g.plaza.x}" cy="${g.plaza.y}" r="58" fill="#F3F0E7" stroke="${INK}" stroke-width="5"/>
-  <text x="${g.plaza.x}" y="${g.plaza.y-34}" text-anchor="middle" font-family="${SANS}" font-size="13" font-weight="700" fill="${INK}" letter-spacing="1">INÍCIO</text>
-  <text x="${g.plaza.x}" y="${g.plaza.y+46}" text-anchor="middle" font-family="${SANS}" font-size="11" font-weight="700" fill="#5C6170">+${CONFIG.PONTOS.volta} por volta</text>`;
+`;
+  // setas antes da praça: o círculo cobre a base delas e o texto INÍCIO fica livre
   g.arrows.forEach(a => {
     s += `<polygon points="-11,-10 13,0 -11,10" fill="${INK}" stroke="#F3F0E7" stroke-width="2" transform="translate(${a.x.toFixed(1)},${a.y.toFixed(1)}) rotate(${a.rot.toFixed(1)})"/>`;
   });
+  s += `<circle cx="${g.plaza.x}" cy="${g.plaza.y}" r="58" fill="#F3F0E7" stroke="${INK}" stroke-width="5"/>
+  <text x="${g.plaza.x}" y="${g.plaza.y-37}" text-anchor="middle" font-family="${SANS}" font-size="12" font-weight="800" fill="${INK}" letter-spacing="1.5">INÍCIO</text>`;
   s += `<g id="pawns"></g>`;
   svg.innerHTML = s;
 
@@ -574,6 +575,7 @@ function coroaSvg(y){
 }
 function atualizaPino(i){ const el = document.getElementById('pawn-' + i); if(el) el.innerHTML = pinoSvg(i); }
 
+const OFFSETS_PRACA = [[-18,-2],[18,-2],[-18,16],[18,16],[0,6],[0,22]];
 const OFFSETS = [[-17,-8],[17,-8],[-17,14],[17,14],[0,-26],[0,30]];
 function renderPawns(){
   if(!geom) return;
@@ -582,8 +584,9 @@ function renderPawns(){
   state.groups.forEach((g, i) => {
     const el = document.getElementById('pawn-' + i); if(!el) return;
     const base = g.pos > 0 ? geom.cells[g.pos-1].center : geom.plaza;
-    const list = occ[g.pos], off = list.length > 1 ? OFFSETS[list.indexOf(i) % OFFSETS.length] : [0, 0];
-    const lift = g.pos > 0 ? -32 : 10;
+    const offs = g.pos > 0 ? OFFSETS : OFFSETS_PRACA;
+    const list = occ[g.pos], off = list.length > 1 ? offs[list.indexOf(i) % offs.length] : [0, 0];
+    const lift = g.pos > 0 ? -32 : 16;   // na praça, os pinos ficam abaixo do texto INÍCIO
     const y = Math.max(62, base.y + off[1] + lift);   // casas da borda de cima: a cabeça do pino não sai do tabuleiro
     el.style.transform = `translate(${base.x + off[0]}px, ${y}px)`;
     el.classList.toggle('active', i === state.cur);
