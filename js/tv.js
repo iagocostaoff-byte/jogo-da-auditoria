@@ -972,7 +972,10 @@ function errou(gi, nivel){
 function telaGame(txt, sub, passed){
   const d = document.createElement('div');
   d.className = 'wasted' + (passed ? ' passed' : '');
-  d.innerHTML = `<span>${esc(txt)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>`;
+  // letreiros em imagem pronta (fonte Pricedown, Typodermic): a licença permite arte fixa, não a fonte no site
+  const arq = { 'Ressalvado': 'ressalvado', 'Parecer emitido': 'parecer-emitido', 'Cheat negado': 'cheat-negado' }[txt];
+  const titulo = arq ? `<img src="img/${arq}.png?v=${Rede.VERSAO}" alt="${esc(txt)}">` : esc(txt);
+  d.innerHTML = `<span>${titulo}${sub ? `<small>${esc(sub)}</small>` : ''}</span>`;
   document.body.appendChild(d); setTimeout(() => d.remove(), 2000);
 }
 

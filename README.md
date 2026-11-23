@@ -146,6 +146,12 @@ recarregue a TV com Ctrl+Shift+R.
 - Os casos reais citam fontes públicas. Confira se há novidades antes de usar: alguns processos ainda estão em andamento.
 - As equipes são firmas fictícias. Os casos reais citam as firmas verdadeiras apenas como fato histórico, com fonte; o jogo não tem relação com essas empresas.
 
+## Letreiros
+
+`img/ressalvado.png`, `img/parecer-emitido.png` e `img/cheat-negado.png` são imagens prontas feitas com a fonte
+Pricedown (Ray Larabie, Typodermic). A licença gratuita da fonte permite arte fixa, mas não permite colocar o
+arquivo da fonte no site; por isso o arquivo da fonte não está neste repositório.
+
 ## Licença
 
 MIT (veja `LICENSE`). Bibliotecas incluídas: MQTT.js (MIT), Firebase SDK (Apache 2.0, Google) e
