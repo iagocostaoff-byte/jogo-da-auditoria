@@ -10,21 +10,28 @@
 const CONFIG = {
   GRUPOS_OPCOES: [3, 4, 5, 6],
   GRUPOS_PADRAO: 4,
-  RODADAS_OPCOES: [               // 1 rodada = cada equipe joga uma vez
-    {n: 4,  txt: '≈ 40 min'},
-    {n: 6,  txt: '≈ 60 min'},
-    {n: 8,  txt: '≈ 80 min'},
-    {n: 10, txt: '≈ 100 min'}
+  // Tempo de jogo: a partida acaba quando o relógio zera (a rodada em andamento
+  // vai até o fim, para todas as equipes jogarem o mesmo número de vezes).
+  // min: 0 = sem limite de tempo, por número de rodadas.
+  DURACAO_OPCOES: [
+    {min: 20, txt: 'aula curta'},
+    {min: 25, txt: 'recomendado'},
+    {min: 30, txt: 'com folga'},
+    {min: 0,  txt: 'por rodadas'}
   ],
+  DURACAO_PADRAO: 25,
+  RODADAS_OPCOES: [4, 6, 8, 10],  // usado só em "sem limite de tempo"
   RODADAS_PADRAO: 6,
+  RODADAS_MAXIMO: 30,             // teto de segurança no modo por tempo
   TEMPO_OPCOES: [30, 45, 60],     // segundos para perguntas
   TEMPO_PADRAO: 45,
   TEMPO_EXTRA_CASO: 30,           // casos práticos e reais ganham tempo extra
   TEMPO_DILEMA: 90,
   TEMPO_RELAMPAGO: 20,
-  TEMPO_REPASSE: 20,
+  TEMPO_ROUBO: 20,                // tempo para responder no Roubo de Evidência
   PONTOS: { facil: 10, media: 20, dificil: 30, caso: 40, real: 40, dilema: 40, relampago: 10, volta: 25 },
-  REPASSE_FRACAO: 0.5,            // equipe que rouba no repasse ganha metade
+  ROUBO_FRACAO: 0.5,              // Roubo de Evidência vale metade; cada equipe pode roubar 1 vez por partida
+  ROUBOS_POR_EQUIPE: 1,
   // Texto da nota acadêmica mostrado no pódio. Deixe NOTA: null para esconder.
   NOTA: { participacao: '0,5 ponto para todos que participaram', vencedora: '+0,5 ponto para os integrantes da equipe vencedora' }
 };
@@ -866,6 +873,16 @@ const PIADAS_ERRO = [
   'Ressalva: a equipe não obteve evidência suficiente.',
   'Mais uns R$ 20 bilhões em inconsistências.'
 ];
+
+/* Piadas por equipe: usadas quando a equipe mantém o nome original. */
+const PIADAS_EQUIPE = {
+  'Kada Planilha Me Gasta':    { ok: ['Essa planilha valeu cada centavo.'], no: ['Kada planilha me gasta… e essa saiu cara.'] },
+  'Erros & Yncertezas':        { ok: ['Erros & Yncertezas? Hoje só certezas.'], no: ['Fiel ao nome: mais um erro, mais uma incerteza.'] },
+  'De-Noite':                  { ok: ['O fechamento de madrugada compensou.'], no: ['Essa foi auditada às 3 da manhã, né?'] },
+  'Planilha, WhatsApp & Café': { ok: ['O café bateu.'], no: ['Mandaram a resposta no grupo e ninguém leu.'] },
+  'Bateu Diferença Ontem':     { ok: ['Hoje bateu certinho.'], no: ['Bateu diferença hoje também.'] },
+  'Grande Tormento':           { ok: ['Agora o tormento é dos adversários.'], no: ['Que tormento.'] }
+};
 
 const DECKS = { aud: AUDITORIA, aud2: AUDITORIA2, eti: ETICA, caso: CASOS, real: REAIS, dil: DILEMAS, rel: RELAMPAGO };
 const Q_TYPES = ['aud', 'aud2', 'eti', 'caso', 'real'];

@@ -19,7 +19,7 @@ let ui = {
   pb: false, piada: null, lastDie: null,
   jogadores: {}, capFix: {}, conectado: false, erroRede: null
 };
-let setupCfg = { n: CONFIG.GRUPOS_PADRAO, names: [], rounds: CONFIG.RODADAS_PADRAO, tempo: CONFIG.TEMPO_PADRAO, celular: true };
+let setupCfg = { n: CONFIG.GRUPOS_PADRAO, names: [], rounds: CONFIG.RODADAS_PADRAO, duracao: CONFIG.DURACAO_PADRAO, tempo: CONFIG.TEMPO_PADRAO, celular: true };
 let sala = null;       // conexão com os celulares (Rede.hospedar)
 
 function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: ui.history.slice(-20) })); }catch(e){} }
@@ -149,7 +149,7 @@ function recebeMensagem(m){
       }
     }
   } else if(m.t === 'repasse'){
-    if(c && c.kind === 'q' && c.stage === 'steal' && !c.tried.includes(t)) roubar(t);
+    if(c && c.kind === 'q' && c.stage === 'steal' && podemRoubar(c).includes(t)) roubar(t);
   } else if(m.t === 'vf'){
     if(c && c.kind === 'rel' && c.stage === 'answer' && c.r.id === m.carta && c.vf[t] === undefined){
       c.vf[t] = !!m.val; renderCard();
@@ -175,10 +175,11 @@ function estadoPublico(){
     equipes: state.groups.map((g, i) => {
       const cap = capitao(i);
       return { nome: g.name, sigla: team(i).sigla, cor: team(i).cor, pts: g.pts, pos: g.pos, ok: g.ok, err: g.err,
-        voltas: g.voltas, skip: g.skip, capitao: cap ? cap.pid : null, capNome: cap ? cap.nome : null, membros: membros(i).length };
+        voltas: g.voltas, skip: g.skip, roubos: roubosRestantes(i), capitao: cap ? cap.pid : null, capNome: cap ? cap.nome : null, membros: membros(i).length };
     }),
     carta: cartaPublica(ui.card), pb: !!ui.pb, piada: ui.piada,
-    timer: ui.timer ? { left: ui.timer.left, total: ui.timer.total, running: ui.timer.running } : null
+    timer: ui.timer ? { left: ui.timer.left, total: ui.timer.total, running: ui.timer.running } : null,
+    relogio: state.relogio ? { restante: Math.round(state.relogio.restante), acabou: !!state.relogio.acabou } : null
   };
   if(fase === 'fim'){
     const order = ranking();
@@ -199,7 +200,7 @@ function cartaPublica(c){
       steal: c.steal, tried: c.tried, wrong: c.wrong, pending: c.pending == null ? null : c.pending,
       correta: rev ? q.correta : null, explicacao: rev ? q.explicacao : null, result: rev ? c.result : null,
       awarded: rev ? (c.awarded || 0) : null, winner: rev && c.result === 'ok' ? c.winner : null,
-      piadaCaso: rev && q.piada ? q.piada : null, repasseVale: Math.round(CONFIG.PONTOS[q.nivel] * CONFIG.REPASSE_FRACAO)
+      piadaCaso: rev && q.piada ? q.piada : null, rouboVale: Math.round(CONFIG.PONTOS[q.nivel] * CONFIG.ROUBO_FRACAO), podemRoubar: c.stage === 'steal' ? podemRoubar(c) : []
     });
   }
   if(c.kind === 'dil'){
@@ -226,9 +227,10 @@ function rulesHtml(){
     <li>Cada equipe é uma firma de auditoria e entra na sala pelo QR code. O primeiro celular da equipe é o <b>capitão</b>; os outros acompanham.</li>
     <li>Na vez da equipe, o capitão lança o dado pelo celular (ou o professor, com <b>Espaço</b>). O pino anda casa por casa: laço esquerdo (1 a 18), laço direito (19 a 36), e volta ao centro.</li>
     <li>A equipe discute e o capitão responde no celular. Se a equipe estiver sem celular, o professor marca a alternativa dita em voz alta (teclas <b>1 a 4</b>).</li>
-    <li>Errou? A tela fica em preto e branco e as outras equipes podem pedir o <b>repasse</b>, valendo metade dos pontos.</li>
+    <li>Errou? A tela fica em preto e branco e as outras equipes podem fazer um <b>Roubo de Evidência</b>: respondem valendo metade dos pontos. Cada equipe só pode roubar <b>uma vez</b> por partida.</li>
+    <li>O tabuleiro só mostra números: o tipo da casa (pergunta, caso, sorte…) só aparece quando o pino cai nela.</li>
     <li>Cada volta completa no tabuleiro vale <b>+${CONFIG.PONTOS.volta}</b>, o "parecer emitido".</li>
-    <li>Ao fim das rodadas vence quem tiver mais pontos. Desempate: mais acertos, depois menos erros.</li>
+    <li>Quando o relógio da partida zera (ou acabam as rodadas, no modo sem limite), a rodada em andamento vai até o fim e vence quem tiver mais pontos. Desempate: mais acertos, depois menos erros.</li>
     <li>O professor pode marcar qualquer carta para discussão (tecla <b>M</b>). No fim, o jogo lista essas cartas e as que ninguém acertou.</li>
   </ol>
   <div class="types">${tipos}</div>`;
@@ -266,8 +268,15 @@ function buildSetup(){
   $('#names').innerHTML = html;
 
   const segR = $('#seg-rounds');
-  segR.innerHTML = CONFIG.RODADAS_OPCOES.map(o => `<button data-r="${o.n}" class="${o.n===setupCfg.rounds?'sel':''}">${o.n} rodadas<small>${o.txt}</small></button>`).join('');
-  segR.onclick = e => { const b = e.target.closest('button'); if(!b) return; readNames(); setupCfg.rounds = +b.dataset.r; buildSetup(); };
+  segR.innerHTML = CONFIG.DURACAO_OPCOES.map(o => `<button data-d="${o.min}" class="${o.min===setupCfg.duracao?'sel':''}">${o.min ? o.min + ' min' : 'Sem limite'}<small>${o.txt}</small></button>`).join('');
+  segR.onclick = e => { const b = e.target.closest('button'); if(!b) return; readNames(); setupCfg.duracao = +b.dataset.d; buildSetup(); };
+  const segRod = $('#seg-rodadas');
+  segRod.hidden = setupCfg.duracao !== 0;
+  segRod.innerHTML = CONFIG.RODADAS_OPCOES.map(n => `<button data-r="${n}" class="${n===setupCfg.rounds?'sel':''}">${n} rodadas</button>`).join('');
+  segRod.onclick = e => { const b = e.target.closest('button'); if(!b) return; readNames(); setupCfg.rounds = +b.dataset.r; buildSetup(); };
+  $('#duracao-help').textContent = setupCfg.duracao
+    ? `Quando o relógio zerar, a rodada em andamento vai até o fim e a partida termina.`
+    : 'Sem relógio: a partida termina depois do número de rodadas escolhido (1 rodada = cada equipe joga uma vez).';
 
   const segT = $('#seg-tempo');
   segT.innerHTML = CONFIG.TEMPO_OPCOES.map(t => `<button data-t="${t}" class="${t===setupCfg.tempo?'sel':''}">${t} s</button>`).join('');
@@ -288,8 +297,9 @@ function newGame(){
   readNames();
   state = {
     phase: setupCfg.celular ? 'lobby' : 'play', sala: null,
-    groups: Array.from({length: setupCfg.n}, (_, i) => ({ name: setupCfg.names[i] || team(i).firma, pts: 0, pos: 0, voltas: 0, skip: false, ok: 0, err: 0 })),
-    cur: 0, round: 1, rounds: setupCfg.rounds, tempo: setupCfg.tempo,
+    groups: Array.from({length: setupCfg.n}, (_, i) => ({ name: setupCfg.names[i] || team(i).firma, pts: 0, pos: 0, voltas: 0, skip: false, ok: 0, err: 0, roubos: 0, rouboPts: 0, perdas: 0 })),
+    cur: 0, round: 1, rounds: setupCfg.duracao ? CONFIG.RODADAS_MAXIMO : setupCfg.rounds, tempo: setupCfg.tempo,
+    relogio: setupCfg.duracao ? { total: setupCfg.duracao * 60, restante: setupCfg.duracao * 60, acabou: false } : null,
     used: { aud: [], aud2: [], eti: [], caso: [], real: [], dil: [], rel: [] },
     log: []
   };
@@ -455,12 +465,11 @@ function renderBoard(){
   <text x="${g.lobe2.x}" y="${g.lobe2.y+40}" text-anchor="middle" font-family="${SANS}" font-size="22" font-weight="700" fill="#5C6170" letter-spacing="8">UFRJ</text>
   <polyline points="${g.road}" fill="none" stroke="${INK}" stroke-width="${BOARD.TRACK_W+12}" stroke-linejoin="round"/>`;
   g.cells.forEach(c => {
-    const k = TRILHA[c.num-1], t = TIPOS[k] || TIPOS.aud, dark = k === 'real';
-    const fill = (k === 'pausa' || k === 'sorte') ? 'url(#hatch)' : t.fill;
+    // Só o número: o tipo da casa é surpresa e aparece quando o pino cai nela
+    const fill = c.num % 2 ? '#FBF8EF' : '#F1EDE2';
     s += `<polygon points="${c.poly}" fill="${fill}" stroke="${INK}" stroke-width="2"/>
-      <polygon points="${c.stripe}" fill="${t.stripe}"/>
-      <text x="${c.center.x}" y="${c.center.y+6}" text-anchor="middle" font-family="${SANS}" font-size="29" font-weight="700" fill="${dark ? '#FFFFFF' : INK}">${c.num}</text>
-      <text x="${c.center.x}" y="${c.center.y+23}" text-anchor="middle" font-family="${SANS}" font-size="8.5" font-weight="700" fill="${dark ? '#E7A39A' : '#5C6170'}" letter-spacing=".4">${t.tag}</text>`;
+      <polygon points="${c.stripe}" fill="#5C6170"/>
+      <text x="${c.center.x}" y="${c.center.y+11}" text-anchor="middle" font-family="${SANS}" font-size="31" font-weight="700" fill="${INK}">${c.num}</text>`;
   });
   s += `<polygon id="cell-hl-base" points="" fill="none" stroke="${INK}" stroke-width="10" stroke-linejoin="round"/>
   <polygon id="cell-hl" points="" fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
@@ -515,7 +524,14 @@ function renderPawns(){
    ================================================================== */
 function renderAll(){ renderHeader(); renderTurn(); renderScores(); renderLegend(); renderPawns(); renderRibbon(); renderBadge(); sync(); }
 
+function fmtTempo(s){ s = Math.max(0, Math.round(s)); return Math.floor(s/60) + ':' + String(s % 60).padStart(2, '0'); }
 function renderHeader(){
+  const rl = state.relogio;
+  if(rl){
+    const fim = rl.acabou ? '<span class="last-round">RODADA FINAL</span>' : '';
+    $('#round-box').innerHTML = `${fim}<span>Rodada <strong class="num">${state.round}</strong></span><span class="clock ${rl.restante <= 300 ? 'warn' : ''} ${ui.relogioPausado ? 'paused' : ''}" title="Tempo de jogo restante">${rl.acabou ? '0:00' : fmtTempo(rl.restante)}</span>`;
+    return;
+  }
   let dots = '';
   for(let r = 1; r <= state.rounds; r++) dots += `<i class="${r < state.round ? 'on' : r === state.round ? 'now' : ''}"></i>`;
   const last = state.round === state.rounds ? '<span class="last-round">ÚLTIMA RODADA</span>' : '';
@@ -541,7 +557,7 @@ function renderScores(){
     const cel = state.sala ? (n ? ` · ${n} cel. · cap. ${cap ? cap.nome : ''}` : ' · sem celular') : '';
     return `<div class="score-row ${o.i === state.cur ? 'now' : ''}" style="--team:${team(o.i).cor}">
       <span class="rk num">${rank+1}º</span>${chipHtml(o.i)}
-      <div class="nm"><b>${esc(o.g.name)}</b><span>${o.g.pos > 0 ? 'casa ' + o.g.pos : 'início'} · ${o.g.ok} acertos${o.g.skip ? ' · perde a vez' : ''}${esc(cel)}</span></div>
+      <div class="nm"><b>${esc(o.g.name)}</b><span>${o.g.pos > 0 ? 'casa ' + o.g.pos : 'início'} · ${o.g.ok} acertos${o.g.skip ? ' · perde a vez' : ''}${roubosRestantes(o.i) > 0 ? '' : ' · roubo usado'}${esc(cel)}</span></div>
       <div><div class="pts num">${o.g.pts}</div><div class="adj"><button data-adj="${o.i}" data-d="-5" aria-label="Tirar 5 pontos">−5</button><button data-adj="${o.i}" data-d="5" aria-label="Dar 5 pontos">+5</button></div></div>
     </div>`;
   }).join('');
@@ -592,7 +608,9 @@ async function roll(){
   await sleep(450);
   ui.phase = 'moving'; renderTurn(); sync();
   await movePawn(state.cur, n);
-  openCard(TRILHA[curGroup().pos - 1]);
+  const tipo = TRILHA[curGroup().pos - 1];
+  toast(`Casa ${curGroup().pos}: ${TIPOS[tipo].nome}`);
+  openCard(tipo);
 }
 
 async function movePawn(gi, steps){
@@ -645,8 +663,10 @@ function undo(){
   askConfirm('Desfazer o turno atual? O placar e os pinos voltam para o início deste turno.', 'Desfazer turno', () => {
     stopTimer(); ui.card = null; $('#card-layer').hidden = true;
     if(ui.phase === 'idle' || ui.phase === 'skip'){ if(ui.history.length > 1) ui.history.pop(); }
+    const relogio = state.relogio;
     state = JSON.parse(ui.history[ui.history.length - 1]);
     ui.history.pop();
+    if(relogio) state.relogio = relogio;   // desfazer não devolve tempo de jogo
     renderBoard(); beginTurn();
     toast('Turno desfeito');
   });
@@ -693,7 +713,9 @@ function openCard(tipo){
   renderCard();
 }
 
-function qPoints(c){ const base = CONFIG.PONTOS[c.q.nivel]; return c.steal ? Math.round(base * CONFIG.REPASSE_FRACAO) : base; }
+function qPoints(c){ const base = CONFIG.PONTOS[c.q.nivel]; return c.steal ? Math.round(base * CONFIG.ROUBO_FRACAO) : base; }
+const roubosRestantes = i => CONFIG.ROUBOS_POR_EQUIPE - (state.groups[i].roubos || 0);
+const podemRoubar = c => state.groups.map((g, i) => i).filter(i => !c.tried.includes(i) && roubosRestantes(i) > 0);
 
 function band(title, meta, withTimer){
   return `<div class="card-band"><div class="cat"><span class="cat-name">${title}</span><span class="cat-meta">${meta}</span></div>
@@ -727,7 +749,7 @@ function renderCard(){
     const title = isReal ? `${esc(q.caso)} · ${esc(q.ano)}` : t.nome;
     h += band(title, `${q.id} · ${NIVEL[q.nivel]} · ${esc(q.tema)} · ${pts} pontos`, timing);
     if(isReal) h += `<div class="stamp">CASO REAL</div>`;
-    h += `<div class="card-body">${whoLine(c.who, '', (c.steal ? `<span class="tag steal">Repasse · vale ${pts}</span>` : '') + house + phone)}`;
+    h += `<div class="card-body">${whoLine(c.who, '', (c.steal ? `<span class="tag steal">Roubo de Evidência · vale ${pts}</span>` : '') + house + phone)}`;
     if(isReal) h += `<p class="situacao">${esc(q.contexto)}</p>`;
     h += `<p class="q-text">${esc(q.pergunta)}</p>`;
     if(c.stage !== 'answer' || c.wrong.length) h += verdictHtml();
@@ -753,10 +775,10 @@ function renderCard(){
         : `${timeout ? '<b>Tempo esgotado.</b> ' : ''}${cap && state.sala ? 'Aguardando a resposta pelo celular, ou clique na alternativa dita (1 a 4).' : 'Clique na alternativa que a equipe disse (teclas 1 a 4).'}`;
       h += `<span class="note">${msg}</span><button class="cbtn bad" data-act="nope">Não respondeu</button>`;
     } else if(c.stage === 'steal'){
-      const others = state.groups.map((g, i) => i).filter(i => !c.tried.includes(i));
-      h += `<span class="note"><b>Errou.</b> Repasse valendo ${Math.round(CONFIG.PONTOS[q.nivel]*CONFIG.REPASSE_FRACAO)}: o primeiro capitão que pedir no celular leva a vez, ou escolha aqui.</span>`;
+      const others = podemRoubar(c);
+      h += `<span class="note"><b>Errou.</b> Roubo de Evidência valendo ${Math.round(CONFIG.PONTOS[q.nivel]*CONFIG.ROUBO_FRACAO)}: o primeiro capitão que pedir no celular leva a vez, ou escolha aqui. Cada equipe rouba uma vez por partida.</span>`;
       h += others.map(i => `<button class="cbtn group" data-act="steal" data-g="${i}">${chipHtml(i)}${esc(state.groups[i].name)}</button>`).join('');
-      h += `<button class="cbtn primary" data-act="nosteal">Sem repasse, revelar</button>`;
+      h += `<button class="cbtn primary" data-act="nosteal">Ninguém rouba, revelar</button>`;
     } else {
       h += `<span class="note">Comente a resposta com a turma.</span>${flagBtn(c)}<button class="cbtn primary" data-act="next">Próximo turno <kbd>Espaço</kbd></button>`;
     }
@@ -833,7 +855,7 @@ $('#card-layer').addEventListener('click', e => {
   if(act === 'award'){
     const P = Math.round(CONFIG.PONTOS.dilema * +b.dataset.f);
     c.awarded = P; c.stage = 'done'; c.done = true;
-    if(P){ addPts(c.who, P); state.groups[c.who].ok++; acertou(); } else { state.groups[c.who].err++; errou(); }
+    if(P){ addPts(c.who, P); state.groups[c.who].ok++; acertou(c.who); } else { state.groups[c.who].err++; errou(c.who); }
     renderCard(); renderScores(); return;
   }
   if(act === 'reveal'){ revelarRelampago(); return; }
@@ -845,8 +867,14 @@ $('#card-layer').addEventListener('click', e => {
   if(act === 'apply'){ applyEvent(); return; }
 });
 
-function acertou(){ ui.pb = false; ui.piada = { tipo: 'ok', txt: piada('ok') }; sfx.ok(); }
-function errou(){ ui.pb = true; ui.piada = { tipo: 'no', txt: piada('no') }; sfx.bad(); }
+function piadaDe(tipo, gi){
+  const g = state.groups[gi];
+  const pe = g && g.name === team(gi).firma && typeof PIADAS_EQUIPE !== 'undefined' ? PIADAS_EQUIPE[g.name] : null;
+  if(pe && pe[tipo] && Math.random() < 0.35) return pe[tipo][Math.floor(Math.random() * pe[tipo].length)];
+  return piada(tipo);
+}
+function acertou(gi){ ui.pb = false; ui.piada = { tipo: 'ok', txt: piadaDe('ok', gi) }; sfx.ok(); }
+function errou(gi){ ui.pb = true; ui.piada = { tipo: 'no', txt: piadaDe('no', gi) }; sfx.bad(); }
 
 function chooseAlt(i){
   const c = ui.card; if(!c || c.kind !== 'q' || c.stage !== 'answer') return;
@@ -857,22 +885,23 @@ function chooseAlt(i){
     const pts = qPoints(c);
     addPts(c.who, pts); state.groups[c.who].ok++;
     c.awarded = pts; c.winner = c.who; c.result = 'ok'; c.stage = 'reveal'; c.done = true;
-    acertou(); ui.piada.sub = `+${pts} para ${state.groups[c.who].name}`;
+    if(c.steal) state.groups[c.who].rouboPts = (state.groups[c.who].rouboPts || 0) + pts;
+    acertou(c.who); ui.piada.sub = `+${pts} para ${state.groups[c.who].name}`;
     renderCard(); renderScores(); return;
   }
   if(i >= 0) c.wrong.push(i);
   state.groups[c.who].err++;
-  errou(); ui.piada.sub = i >= 0 ? `${state.groups[c.who].name} marcou ${LETRAS[i]}` : `${state.groups[c.who].name} não respondeu`;
-  const others = state.groups.map((g, k) => k).filter(k => !c.tried.includes(k));
-  if(!c.steal && others.length){ c.stage = 'steal'; renderCard(); }
+  errou(c.who); ui.piada.sub = i >= 0 ? `${state.groups[c.who].name} marcou ${LETRAS[i]}` : `${state.groups[c.who].name} não respondeu`;
+  if(!c.steal && podemRoubar(c).length){ c.stage = 'steal'; renderCard(); }
   else revealQ();
   renderScores();
 }
 function roubar(g){
   const c = ui.card; if(!c || c.stage !== 'steal') return;
   c.steal = true; c.who = g; c.tried.push(g); c.stage = 'answer';
-  toast(`${state.groups[g].name} pediu o repasse`);
-  startTimer(CONFIG.TEMPO_REPASSE); renderCard();
+  state.groups[g].roubos = (state.groups[g].roubos || 0) + 1;
+  toast(`${state.groups[g].name} fez o Roubo de Evidência!`);
+  startTimer(CONFIG.TEMPO_ROUBO); renderCard(); renderScores();
 }
 function revealQ(){ const c = ui.card; c.result = 'no'; c.stage = 'reveal'; c.done = true; stopTimer(); renderCard(); }
 
@@ -886,7 +915,7 @@ function revelarRelampago(){
 async function applyEvent(){
   const c = ui.card, ef = c.e.efeito;
   c.stage = 'applying'; renderCard();
-  if(ef.pts !== undefined){ addPts(c.who, ef.pts); ef.pts > 0 ? sfx.ok() : sfx.bad(); }
+  if(ef.pts !== undefined){ addPts(c.who, ef.pts); if(ef.pts < 0) state.groups[c.who].perdas = (state.groups[c.who].perdas || 0) - ef.pts; ef.pts > 0 ? sfx.ok() : sfx.bad(); }
   else { $('#card-layer').hidden = true; await movePawn(c.who, ef.mover); $('#card-layer').hidden = false; }
   c.stage = 'done'; c.done = true; renderCard(); renderScores();
 }
@@ -919,6 +948,50 @@ function paintTimer(){
 }
 
 /* ==================================================================
+   RELÓGIO DA PARTIDA (modo por tempo)
+   ================================================================== */
+let ultimoTique = Date.now();
+setInterval(() => {
+  const agora = Date.now(), dt = (agora - ultimoTique) / 1000; ultimoTique = agora;
+  if(!state || state.phase !== 'play' || !state.relogio || state.relogio.acabou || ui.relogioPausado || $('#app').hidden) return;
+  const rl = state.relogio, antes = Math.ceil(rl.restante);
+  rl.restante = Math.max(0, rl.restante - dt);
+  if(rl.restante <= 0){
+    rl.acabou = true;
+    state.rounds = state.round;        // termina ao fim da rodada em andamento
+    toast('Tempo de jogo esgotado: esta é a rodada final.'); sfx.end();
+    save();
+  } else if(antes > 300 && rl.restante <= 300) toast('Faltam 5 minutos de jogo.');
+  if(Math.ceil(rl.restante) !== antes){ renderHeader(); if(Math.ceil(rl.restante) % 5 === 0) sync(); }
+  if(Math.ceil(rl.restante) % 15 === 0) save();
+}, 1000);
+function toggleRelogio(){
+  if(!state || !state.relogio){ toast('Esta partida não tem relógio (modo por rodadas).'); return; }
+  ui.relogioPausado = !ui.relogioPausado;
+  $('#m-clock').innerHTML = `${ui.relogioPausado ? 'Retomar' : 'Pausar'} relógio da partida <kbd>R</kbd>`;
+  renderHeader(); sync();
+  toast(ui.relogioPausado ? 'Relógio da partida pausado' : 'Relógio da partida retomado');
+}
+
+/* Prêmios do fim da partida (só aparecem quando alguém se qualifica) */
+function premios(){
+  const gs = state.groups.map((g, i) => ({ g, i }));
+  const top = (campo, min) => {
+    const v = Math.max(...gs.map(o => o.g[campo] || 0));
+    if(v < (min || 1)) return null;
+    return gs.filter(o => (o.g[campo] || 0) === v);
+  };
+  const lista = [];
+  const add = (titulo, desc, quem, valor) => { if(quem) lista.push({ titulo, desc, quem, valor }); };
+  const ok = top('ok'); add('Prêmio Cynthia Cooper', 'mais respostas certas', ok, ok && ok[0].g.ok);
+  const rb = top('rouboPts'); add('Ladrão de Evidências', 'mais pontos em Roubo de Evidência', rb, rb && rb[0].g.rouboPts + ' pts');
+  const er = top('err'); add('Fragmentadora de Ouro', 'mais erros (a Arthur Andersen mandou lembranças)', er, er && er[0].g.err);
+  const pd = top('perdas'); add('Prêmio Repo 105', 'mais pontos perdidos em revés', pd, pd && pd[0].g.perdas + ' pts');
+  const vt = top('voltas'); add('Parecer emitido', 'mais voltas completas no tabuleiro', vt, vt && vt[0].g.voltas);
+  return lista;
+}
+
+/* ==================================================================
    FIM DE JOGO E GABARITO
    ================================================================== */
 function endGame(){
@@ -947,6 +1020,7 @@ function endGame(){
       <thead><tr><th>Posição</th><th>Equipe</th><th style="text-align:right">Pontos</th><th style="text-align:right">Acertos</th><th style="text-align:right">Erros</th><th style="text-align:right">Voltas</th></tr></thead>
       <tbody>${order.map((o, k) => `<tr><td>${k+1}º</td><td>${chipHtml(o.i)} ${esc(o.g.name)}</td><td class="n">${o.g.pts}</td><td class="n">${o.g.ok}</td><td class="n">${o.g.err}</td><td class="n">${o.g.voltas}</td></tr>`).join('')}</tbody>
     </table></div>
+    ${(() => { const pr = premios(); return pr.length ? `<div class="panel"><h2 style="font-size:24px;margin-bottom:8px">Prêmios do parecer</h2><div class="awards">${pr.map(p => `<div class="award"><b>${esc(p.titulo)}</b><span>${p.quem.map(o => chipHtml(o.i) + ' ' + esc(o.g.name)).join(', ')}</span><small>${esc(p.desc)} · ${esc(p.valor)}</small></div>`).join('')}</div></div>` : ''; })()}
     <div class="panel review"><h2>Para retomar na discussão</h2><p>Cartas que ninguém acertou ou que você marcou durante a partida.</p>${review}</div>`;
   $('#app').hidden = true; $('#end').hidden = false; $('#end').scrollTop = 0;
   $('#btn-new').onclick = () => {
@@ -1001,6 +1075,7 @@ $('#m-full').onclick = toggleFull;
 $('#m-sound').onclick = toggleSound;
 $('#m-room').onclick = () => { if(state && state.sala) showLobby(); else toast('Esta partida está no modo só na TV.'); };
 $('#room-badge').onclick = () => showLobby();
+$('#m-clock').onclick = toggleRelogio;
 $('#m-end').onclick = () => askConfirm('Encerrar a partida agora e mostrar o pódio?', 'Encerrar partida', endGame);
 $('#btn-roll').onclick = primary;
 $('#score-list').addEventListener('click', e => {
@@ -1018,7 +1093,7 @@ function shortcutsHtml(){
     <li><b>Espaço</b> ou <b>Enter</b>: lançar o dado / próximo turno</li>
     <li><b>1 a 4</b> (ou A a D): marcar a alternativa dita pela equipe</li>
     <li><b>M</b>: marcar a carta para discussão no fim · <b>Q</b>: mostrar o QR code da sala</li>
-    <li><b>P</b>: pausar ou retomar o tempo · <b>F</b>: tela cheia · <b>S</b>: som</li>
+    <li><b>P</b>: pausar o tempo da pergunta · <b>R</b>: pausar o relógio da partida · <b>F</b>: tela cheia · <b>S</b>: som</li>
     <li><b>Z</b>: desfazer o turno · <b>H</b>: regras · <b>Esc</b>: fechar janelas</li>
   </ol>`;
 }
@@ -1050,6 +1125,7 @@ document.addEventListener('keydown', e => {
   if(idx >= 0 && k.length === 1){ chooseAlt(idx); return; }
   if(k === 'm'){ if(ui.card && ui.card.done && ui.card.flag !== undefined){ ui.card.flag = !ui.card.flag; renderCard(); } return; }
   if(k === 'q'){ if(state && state.sala) showLobby(); return; }
+  if(k === 'r'){ toggleRelogio(); return; }
   if(k === 'p') togglePause();
   else if(k === 'f') toggleFull();
   else if(k === 's') toggleSound();

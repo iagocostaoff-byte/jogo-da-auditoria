@@ -72,6 +72,9 @@ body.pb .card{animation:shakeX .45s ease}
 .dots i{width:11px;height:11px;border-radius:50%;background:var(--line)}
 .dots i.on{background:var(--paper-2)}
 .dots i.now{background:var(--paper);box-shadow:0 0 0 3px rgba(243,240,231,.25)}
+.clock{font-family:var(--f-display);font-weight:800;color:var(--ink);font-size:1.35em;font-variant-numeric:tabular-nums}
+.clock.warn{color:#F0A49C}
+.clock.paused{opacity:.55}
 .last-round{background:var(--stamp);color:#fff;font-weight:700;padding:3px 10px;border-radius:20px;font-size:.8em;letter-spacing:.06em}
 
 .game{display:grid;grid-template-columns:minmax(0,1fr) clamp(300px,25vw,440px);gap:14px;min-height:0}
@@ -282,7 +285,8 @@ details.mod[open] summary::after{content:' −'}
 .seg button.sel{background:var(--paper);color:var(--paper-ink);border-color:var(--paper)}
 .seg button.sel small{color:var(--paper-soft)}
 .seg button:disabled{opacity:.45}
-.names{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.names{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.names > *,.setup-grid > *{min-width:0}
 .name-row{display:flex;align-items:center;gap:8px}
 .name-row input{
   flex:1;min-width:0;background:var(--panel-2);border:1px solid var(--line);border-radius:9px;color:var(--ink);
@@ -333,6 +337,11 @@ details.mod[open] summary::after{content:' −'}
 .end-table th,.end-table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
 .end-table th{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
 .end-table td.n{text-align:right;font-variant-numeric:tabular-nums}
+.awards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.award{background:var(--panel-2);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.award b{font-family:var(--f-display);font-size:18px}
+.award span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.award small{color:var(--ink-soft)}
 .review h2{font-size:24px;margin-bottom:4px}
 .review > p{color:var(--ink-soft);margin:0 0 8px}
 .rv{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -404,8 +413,10 @@ details.mod[open] summary::after{content:' −'}
           <div class="names" id="names"></div>
         </div>
         <div class="field">
-          <span class="lbl">Duração da partida</span>
+          <span class="lbl">Tempo de jogo</span>
           <div class="seg" id="seg-rounds"></div>
+          <span class="help" id="duracao-help"></span>
+          <div class="seg" id="seg-rodadas"></div>
         </div>
         <div class="field">
           <span class="lbl">Tempo para responder</span>
@@ -504,13 +515,15 @@ details.mod[open] summary::after{content:' −'}
             <button id="m-room">Sala e QR code <kbd>Q</kbd></button>
             <button id="m-rules">Regras <kbd>H</kbd></button>
             <button id="m-gab" style="grid-column:1/-1">Gabarito</button>
+            <button id="m-clock" style="grid-column:1/-1">Pausar relógio da partida <kbd>R</kbd></button>
             <button id="m-end" class="danger" style="grid-column:1/-1">Encerrar partida e ver pódio</button>
           </div>
         </details>
       </div>
 
       <div class="panel">
-        <div class="panel-title"><span>Casas</span></div>
+        <div class="panel-title"><span>Cartas</span></div>
+        <p style="margin:0 0 8px;font-size:12px;color:var(--ink-soft)">O tipo da casa só aparece quando o pino cai nela.</p>
         <div class="legend" id="legend"></div>
       </div>
     </aside>

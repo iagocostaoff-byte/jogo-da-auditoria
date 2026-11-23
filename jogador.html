@@ -262,7 +262,8 @@ function bindEquipe(){
 function statusLinha(eq, cap){
   const vez = est.equipes[est.vez];
   const minha = eq && est.vez === me.equipe;
-  const r = `Rodada ${est.rodada} de ${est.rodadas}`;
+  const rl = est.relogio;
+  const r = rl ? `Rodada ${est.rodada} · ${rl.acabou ? 'rodada final' : Math.floor(rl.restante/60) + ':' + String(rl.restante % 60).padStart(2, '0') + ' de jogo'}` : `Rodada ${est.rodada} de ${est.rodadas}`;
   if(est.turno === 'rolling') return `${r} · <b>${esc(vez.nome)}</b> está lançando o dado…`;
   if(est.turno === 'moving') return `${r} · <b>${esc(vez.nome)}</b> tirou ${est.dado} e está andando…`;
   if(est.turno === 'skip') return `${r} · <b>${esc(vez.nome)}</b> perde esta vez.`;
@@ -292,7 +293,7 @@ function cartaHtml(eq, cap){
   if(c.kind === 'q'){
     const key = c.id + ':' + c.who + ':' + c.wrong.length;
     const podeResponder = cap && c.stage === 'answer' && c.who === me.equipe && c.pending == null && !enviado[key];
-    const podeRoubar = cap && c.stage === 'steal' && !c.tried.includes(me.equipe);
+    const podeRoubar = cap && c.stage === 'steal' && (c.podemRoubar || []).includes(me.equipe);
     let h = `<div class="card"><div class="card-band ${c.tipo === 'real' ? 'real' : ''}"><span><b>${esc(c.titulo)}</b><small>${esc(c.nivel)} · ${c.pontos} pontos · responde ${esc(quem.nome)}</small></span>${c.stage === 'answer' ? timerHtml() : ''}</div><div class="card-body">`;
     if(c.contexto) h += `<p class="ctx">${esc(c.contexto)}</p>`;
     h += `<p class="q">${esc(c.pergunta)}</p>`;
@@ -309,8 +310,8 @@ function cartaHtml(eq, cap){
       else if(c.who === me.equipe && !cap) h += `<p class="note">Ajude a equipe: quem responde é o capitão.</p>`;
       else if(c.pending != null || enviado[key] !== undefined) h += `<p class="note">Resposta enviada. Olhe para a TV!</p>`;
     }
-    if(podeRoubar) h += `<button class="big team" id="repasse">Pedir o repasse (vale ${c.repasseVale})</button>`;
-    else if(c.stage === 'steal') h += `<p class="note">Repasse aberto para as outras equipes.</p>`;
+    if(podeRoubar) h += `<button class="big team" id="repasse">Roubar evidência (vale ${c.rouboVale})</button><p class="note">Cada equipe só pode roubar uma vez por partida.</p>`;
+    else if(c.stage === 'steal') h += `<p class="note">${cap && eq && eq.roubos <= 0 && c.who !== me.equipe ? 'Sua equipe já usou o Roubo de Evidência.' : 'Roubo de Evidência aberto para as outras equipes.'}</p>`;
     if(c.stage === 'reveal'){
       h += `<div class="explain">${esc(c.explicacao)}</div>`;
       if(c.piadaCaso) h += `<div class="joke"><b>Para descontrair</b>${esc(c.piadaCaso)}</div>`;
