@@ -51,6 +51,9 @@ qualquer hospedagem de site. No GitHub Pages: **Settings › Pages › Deploy fr
 2. Escolha **Pelo celular**, o número de equipes, a duração e o tempo, e clique em **Criar sala**.
 3. Os alunos apontam a câmera para o QR code, digitam o nome e escolhem a equipe.
    Toque num nome na tela da sala para trocar o capitão.
+   O capitão escolhe no celular a **imagem do pino**: um dos emojis ou uma foto da galeria (reduzida
+   para poucos KB). Ela anda no tabuleiro no lugar da sigla, com um anel na cor da equipe. Para tirar uma
+   imagem imprópria, clique em **remover** ao lado dela nesta tela (durante a partida, tecla **Q**).
 4. Clique em **Começar partida**. Quem chegar atrasado entra pelo QR code no canto da tela (tecla **Q**).
 
 ### Mata-mata: Auditor-Sócio (uns 5 minutos)

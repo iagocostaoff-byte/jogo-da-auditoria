@@ -144,6 +144,7 @@ function joinUrl(){
 /* Mensagens que chegam dos celulares. A TV é quem decide se valem. */
 function recebeMensagem(m){
   if(m && m.t === 'mm' && typeof mmResposta === 'function'){ mmResposta(m); return; }
+  if(m && m.t === 'avatar'){ recebeAvatar(m); return; }
   if(!m || !state || state.phase !== 'play') return;
   const t = equipeDe(m.pid);
   if(t < 0 || !ehCapitao(m.pid, t)) return;           // só o capitão de cada equipe joga
@@ -169,6 +170,29 @@ function recebeMensagem(m){
   }
 }
 
+/* ---------------- Imagem do pino (escolhida pelo capitão) ---------------- */
+function avatarValido(m){
+  if(m.tipo === 'emoji') return typeof m.v === 'string' && m.v.length > 0 && m.v.length <= 16 && !/[<>&"']/.test(m.v);
+  if(m.tipo === 'img') return typeof m.v === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(m.v) && m.v.length <= 60000;
+  return false;
+}
+function recebeAvatar(m){
+  if(!state || !(state.phase === 'lobby' || state.phase === 'play')) return;
+  const t = equipeDe(m.pid);
+  if(t < 0 || !ehCapitao(m.pid, t)) return;
+  if(m.tipo == null) state.groups[t].avatar = null;
+  else if(avatarValido(m)) state.groups[t].avatar = { tipo: m.tipo, v: m.v };
+  else return;
+  atualizaPino(t); renderLobby(); save(); sync();
+}
+function removerAvatar(t){ state.groups[t].avatar = null; atualizaPino(t); renderLobby(); save(); sync(); }
+/* Miniatura redonda da imagem (lobby da TV) */
+function avatarMini(t){
+  const a = state.groups[t].avatar; if(!a) return '';
+  const inner = a.tipo === 'img' ? `<img src="${a.v}" alt="">` : `<span>${esc(a.v)}</span>`;
+  return `<span class="av-mini" style="--team:${team(t).cor}">${inner}</span>`;
+}
+
 /* ---------------- Estado público (o que os celulares veem) ---------------- */
 let seq = 0, syncT = null;
 function sync(){
@@ -185,6 +209,7 @@ function estadoPublico(){
     equipes: state.groups.map((g, i) => {
       const cap = capitao(i);
       return { nome: g.name, sigla: team(i).sigla, cor: team(i).cor, pts: g.pts, pos: g.pos, ok: g.ok, err: g.err,
+        avatar: g.avatar ? (g.avatar.tipo === 'emoji' ? g.avatar : { tipo: 'img', n: g.avatar.v.length }) : null,
         voltas: g.voltas, skip: g.skip, roubos: roubosRestantes(i), semRessalvas: semRessalvas(g), capitao: cap ? cap.pid : null, capNome: cap ? cap.nome : null, membros: membros(i).length };
     }),
     carta: cartaPublica(ui.card), pb: !!ui.pb, piada: ui.piada,
@@ -375,12 +400,14 @@ function renderLobby(){
     const ms = membros(i), cap = capitao(i);
     const lista = ms.length ? ms.map(m => `<button class="member ${cap && cap.pid === m.pid ? 'cap' : ''}" data-cap="${i}" data-pid="${esc(m.pid)}"><span>${esc(m.nome)}</span><span class="role">${cap && cap.pid === m.pid ? 'capitão' : 'torcida'}</span></button>`).join('')
       : '<span class="empty">Ninguém ainda. O professor responde por esta equipe.</span>';
-    return `<div class="team-col" style="--team:${team(i).cor}"><h3>${chipHtml(i)} ${esc(g.name)}</h3>${lista}</div>`;
+    const av = g.avatar ? `<div class="av-row">${avatarMini(i)}<span>Imagem do pino</span><button class="av-rm" data-rmav="${i}">remover</button></div>` : '';
+    return `<div class="team-col" style="--team:${team(i).cor}"><h3>${chipHtml(i)} ${esc(g.name)}</h3>${av}${lista}</div>`;
   }).join('');
   const espect = Object.values(ui.jogadores).filter(j => j && (j.equipe === -1 || j.equipe == null)).length;
   $('#spectators').textContent = `${totalCelulares()} celular${totalCelulares() === 1 ? '' : 'es'} na sala${espect ? ` · ${espect} só assistindo` : ''}.`;
 }
 $('#teams-grid').addEventListener('click', e => {
+  const rm = e.target.closest('[data-rmav]'); if(rm){ removerAvatar(+rm.dataset.rmav); return; }
   const b = e.target.closest('[data-cap]'); if(!b) return;
   ui.capFix[+b.dataset.cap] = b.dataset.pid; renderLobby(); sync();
 });
@@ -505,15 +532,30 @@ function renderBoard(){
     const t = team(i), c = t.cor, el = document.createElementNS(NS, 'g');
     const fs = t.sigla.length >= 4 ? 7 : t.sigla.length === 3 ? 8.5 : 11;
     el.setAttribute('class', 'pawn'); el.setAttribute('id', 'pawn-' + i);
-    el.innerHTML = `<g class="pawn-body">
-      <ellipse cx="0" cy="17" rx="15" ry="5" fill="rgba(0,0,0,.3)"/>
-      <path d="M-13 17 Q-13 4 -6 -3 L6 -3 Q13 4 13 17 Z" fill="${c}" stroke="#14181F" stroke-width="2.2"/>
-      <circle cx="0" cy="-11" r="12" fill="${c}" stroke="#14181F" stroke-width="2.2"/>
-      <text x="0" y="${-11 + fs*0.36}" text-anchor="middle" font-family="${SANS}" font-size="${fs}" font-weight="700" fill="${textColor(c)}">${esc(t.sigla)}</text></g>`;
+    el.innerHTML = pinoSvg(i);
     layer.appendChild(el);
   });
   renderPawns();
 }
+
+/* Pino: corpo na cor da equipe; a cabeça mostra a sigla ou a imagem escolhida pelo capitão */
+function pinoSvg(i){
+  const t = team(i), c = t.cor, a = state.groups[i].avatar;
+  const fs = t.sigla.length >= 4 ? 7 : t.sigla.length === 3 ? 8.5 : 11;
+  const corpo = `<ellipse cx="0" cy="17" rx="15" ry="5" fill="rgba(0,0,0,.3)"/>
+      <path d="M-13 17 Q-13 4 -6 -3 L6 -3 Q13 4 13 17 Z" fill="${c}" stroke="#14181F" stroke-width="2.2"/>`;
+  if(!a) return `<g class="pawn-body">${corpo}
+      <circle cx="0" cy="-11" r="12" fill="${c}" stroke="#14181F" stroke-width="2.2"/>
+      <text x="0" y="${-11 + fs*0.36}" text-anchor="middle" font-family="${SANS}" font-size="${fs}" font-weight="700" fill="${textColor(c)}">${esc(t.sigla)}</text></g>`;
+  const R = 15, cy = -14;
+  const miolo = a.tipo === 'img'
+    ? `<clipPath id="pclip-${i}"><circle cx="0" cy="${cy}" r="${R - 2}"/></clipPath><image href="${a.v}" x="${-R + 2}" y="${cy - R + 2}" width="${2*R - 4}" height="${2*R - 4}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pclip-${i})"/>`
+    : `<text x="0" y="${cy + 6.5}" text-anchor="middle" font-size="18">${esc(a.v)}</text>`;
+  return `<g class="pawn-body">${corpo}
+      <circle cx="0" cy="${cy}" r="${R + 1.6}" fill="#14181F"/>
+      <circle cx="0" cy="${cy}" r="${R}" fill="#F4F1EA" stroke="${c}" stroke-width="3.2"/>${miolo}</g>`;
+}
+function atualizaPino(i){ const el = document.getElementById('pawn-' + i); if(el) el.innerHTML = pinoSvg(i); }
 
 const OFFSETS = [[-17,-8],[17,-8],[-17,14],[17,14],[0,-26],[0,30]];
 function renderPawns(){
@@ -525,7 +567,8 @@ function renderPawns(){
     const base = g.pos > 0 ? geom.cells[g.pos-1].center : geom.plaza;
     const list = occ[g.pos], off = list.length > 1 ? OFFSETS[list.indexOf(i) % OFFSETS.length] : [0, 0];
     const lift = g.pos > 0 ? -32 : 10;
-    el.style.transform = `translate(${base.x + off[0]}px, ${base.y + off[1] + lift}px)`;
+    const y = Math.max(50, base.y + off[1] + lift);   // casas da borda de cima: a cabeça do pino não sai do tabuleiro
+    el.style.transform = `translate(${base.x + off[0]}px, ${y}px)`;
     el.classList.toggle('active', i === state.cur);
   });
   const active = document.getElementById('pawn-' + state.cur);

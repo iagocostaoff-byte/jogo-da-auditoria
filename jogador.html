@@ -119,6 +119,15 @@ main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .srow b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .srow .p{font-family:var(--f-display);font-weight:800;font-size:20px}
 .title{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px}
+.av-box{display:flex;flex-direction:column;gap:10px}
+.av-top{display:flex;align-items:center;gap:12px}
+.av-prev{width:58px;height:58px;border-radius:50%;border:4px solid var(--team,#888);background:#F4F1EA;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:30px;flex:none;color:#14181F;font-weight:800}
+.av-prev img{width:100%;height:100%;object-fit:cover}
+.av-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.av-grid button{font-size:24px;padding:6px 0;border-radius:10px;background:var(--panel-2,#222);border:2px solid transparent}
+.av-grid button.sel{border-color:var(--team,#fff)}
+.av-acts{display:flex;gap:8px;flex-wrap:wrap}
+.av-acts button{flex:1;padding:10px;border-radius:10px;font-weight:700;background:var(--panel-2,#222);border:1px solid var(--line,#444)}
 .link{color:var(--ink-soft);text-decoration:underline;font-size:14px;padding:6px 0;align-self:center}
 .die{font-family:var(--f-display);font-size:64px;font-weight:800;text-align:center;line-height:1}
 .center{text-align:center}
@@ -132,6 +141,7 @@ main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
   <div id="view"></div>
 </main>
 
+<input type="file" id="foto" accept="image/*" hidden>
 <script src="js/firebase-config.js"></script>
 <script src="js/vendor/firebase-app-compat.js"></script>
 <script src="js/vendor/firebase-database-compat.js"></script>
@@ -156,6 +166,8 @@ let salaCod = (params.get('sala') || '').toUpperCase().replace(/[^A-Z]/g, '').sl
 let pid = params.get('pid') || ls('trilha-pid');   // ?pid= só serve para testes
 if(!pid){ pid = 'p' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); ls('trilha-pid', pid); }
 let me = { nome: ls('trilha-nome') || '', equipe: null };
+const EMOJIS = ['🦁','🐺','🦊','🐯','🦉','🦈','🐉','🐙','🦅','🐝','🕵️','🧮','📊','💼','🔍','🧾','💸','⚖️','☕','🍕','👑','🚀','🔥','🎯'];
+let avatarAberto = false, avatarEnviando = false, avatarErro = '';
 let conn = null, est = null, enviado = {}, achou = false, conectado = null, erroRede = null, esperou = false;
 
 Rede.init();
@@ -221,7 +233,7 @@ function renderTela(){
 
   if(est.fase === 'matamata'){ h += telaMataMata(); v.innerHTML = h; bindMataMata(); return; }
   if(est.fase === 'lobby'){
-    h += `<div class="panel center"><h2>Pronto!</h2><p class="status">Aguarde o professor começar a partida.</p></div>${placar()}`;
+    h += `<div class="panel center"><h2>Pronto!</h2><p class="status">Aguarde o professor começar a partida.</p></div>${cap ? avatarHtml(eq, true) : ''}${placar()}`;
   } else if(est.fase === 'apurando'){
     h += `<div class="panel center"><h2>Apurando o parecer…</h2><p class="status">Olhe para a TV: o pódio vai ser revelado.</p></div>`;
   } else if(est.fase === 'fim'){
@@ -231,6 +243,7 @@ function renderTela(){
     h += acaoPrincipal(eq, cap);
     h += cartaHtml(eq, cap);
     h += placar();
+    if(cap) h += avatarAberto ? avatarHtml(eq, false) : `<button class="link" id="av-abrir">Imagem do pino da equipe</button>`;
   }
   h += `<button class="link" id="trocar">Trocar de equipe</button>`;
   v.innerHTML = h;
@@ -392,7 +405,45 @@ function telaFim(){
   return h + placar();
 }
 
+/* ---------------- Imagem do pino (só o capitão) ---------------- */
+function avatarLocal(){ return ls('trilha-avatar-' + salaCod + '-' + me.equipe) || ''; }
+function avatarHtml(eq, lobby){
+  const a = eq.avatar;
+  const prev = !a ? esc(eq.sigla) : a.tipo === 'emoji' ? esc(a.v) : (avatarLocal() ? `<img src="${avatarLocal()}" alt="">` : '📷');
+  return `<div class="panel av-box"><div class="av-top"><div class="av-prev">${prev}</div><div><b>Imagem do pino</b><div class="status">${lobby ? 'Escolha a imagem que vai andar no tabuleiro da TV.' : 'Troque quando quiser.'}${avatarEnviando ? ' Enviando…' : ''}${avatarErro ? ' ' + esc(avatarErro) : ''}</div></div></div>
+    <div class="av-grid">${EMOJIS.map(e => `<button data-emo="${e}" class="${a && a.tipo === 'emoji' && a.v === e ? 'sel' : ''}">${e}</button>`).join('')}</div>
+    <div class="av-acts"><button id="av-foto">Enviar uma foto</button>${a ? '<button id="av-sem">Usar a sigla</button>' : ''}${lobby ? '' : '<button id="av-fechar">Fechar</button>'}</div>
+    <div class="status">A foto aparece para a turma inteira na TV. O professor pode remover.</div></div>`;
+}
+function bindAvatar(){
+  document.querySelectorAll('[data-emo]').forEach(b => b.onclick = () => enviar({ t: 'avatar', tipo: 'emoji', v: b.dataset.emo }));
+  const f = $('#av-foto'); if(f) f.onclick = () => $('#foto').click();
+  const s = $('#av-sem'); if(s) s.onclick = () => enviar({ t: 'avatar', tipo: null });
+  const ab = $('#av-abrir'); if(ab) ab.onclick = () => { avatarAberto = true; render(); };
+  const fe = $('#av-fechar'); if(fe) fe.onclick = () => { avatarAberto = false; render(); };
+}
+/* Recorta a foto no centro e reduz para 96 px (fica com poucos KB) */
+$('#foto').onchange = async e => {
+  const file = e.target.files && e.target.files[0]; e.target.value = '';
+  if(!file) return;
+  avatarEnviando = true; avatarErro = ''; render();
+  try{
+    const url = URL.createObjectURL(file);
+    const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+    const S = 96, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const lado = Math.min(img.naturalWidth, img.naturalHeight);
+    cv.getContext('2d').drawImage(img, (img.naturalWidth - lado) / 2, (img.naturalHeight - lado) / 2, lado, lado, 0, 0, S, S);
+    URL.revokeObjectURL(url);
+    let q = 0.75, data = cv.toDataURL('image/jpeg', q);
+    while(data.length > 20000 && q > 0.3){ q -= 0.15; data = cv.toDataURL('image/jpeg', q); }
+    ls('trilha-avatar-' + salaCod + '-' + me.equipe, data);
+    enviar({ t: 'avatar', tipo: 'img', v: data });
+  }catch(err){ avatarErro = 'Não deu para abrir essa imagem. Tente outra.'; }
+  avatarEnviando = false; render();
+};
+
 function bindJogo(cap){
+  bindAvatar();
   const tr = $('#trocar'); if(tr) tr.onclick = trocar;
   const d = $('#dado'); if(d) d.onclick = () => { d.disabled = true; enviar({ t: 'dado' }); };
   const c = est && est.carta;
