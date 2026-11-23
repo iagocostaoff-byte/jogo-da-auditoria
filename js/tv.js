@@ -228,7 +228,7 @@ function rulesHtml(){
     <li>Na vez da equipe, o capitão lança o dado pelo celular (ou o professor, com <b>Espaço</b>). O pino anda casa por casa: laço esquerdo (1 a 18), laço direito (19 a 36), e volta ao centro.</li>
     <li>A equipe discute e o capitão responde no celular. Se a equipe estiver sem celular, o professor marca a alternativa dita em voz alta (teclas <b>1 a 4</b>).</li>
     <li>Errou? A tela fica em preto e branco e as outras equipes podem fazer um <b>Roubo de Evidência</b>: respondem valendo metade dos pontos. Cada equipe só pode roubar <b>uma vez</b> por partida.</li>
-    <li>O tabuleiro só mostra números: o tipo da casa (pergunta, caso, sorte…) só aparece quando o pino cai nela.</li>
+    <li>A cor de cada casa mostra o tipo de carta (veja a legenda ao lado do tabuleiro).</li>
     <li>Cada volta completa no tabuleiro vale <b>+${CONFIG.PONTOS.volta}</b>, o "parecer emitido".</li>
     <li>Quando o relógio da partida zera (ou acabam as rodadas, no modo sem limite), a rodada em andamento vai até o fim e vence quem tiver mais pontos. Desempate: mais acertos, depois menos erros.</li>
     <li>O professor pode marcar qualquer carta para discussão (tecla <b>M</b>). No fim, o jogo lista essas cartas e as que ninguém acertou.</li>
@@ -465,11 +465,12 @@ function renderBoard(){
   <text x="${g.lobe2.x}" y="${g.lobe2.y+40}" text-anchor="middle" font-family="${SANS}" font-size="22" font-weight="700" fill="#5C6170" letter-spacing="8">UFRJ</text>
   <polyline points="${g.road}" fill="none" stroke="${INK}" stroke-width="${BOARD.TRACK_W+12}" stroke-linejoin="round"/>`;
   g.cells.forEach(c => {
-    // Só o número: o tipo da casa é surpresa e aparece quando o pino cai nela
-    const fill = c.num % 2 ? '#FBF8EF' : '#F1EDE2';
+    // Cor = tipo da casa (legenda ao lado); dentro, só o número
+    const k = TRILHA[c.num-1], t = TIPOS[k] || TIPOS.aud;
+    const fill = k === 'pausa' ? 'url(#hatch)' : t.fill;
     s += `<polygon points="${c.poly}" fill="${fill}" stroke="${INK}" stroke-width="2"/>
-      <polygon points="${c.stripe}" fill="#5C6170"/>
-      <text x="${c.center.x}" y="${c.center.y+11}" text-anchor="middle" font-family="${SANS}" font-size="31" font-weight="700" fill="${INK}">${c.num}</text>`;
+      <polygon points="${c.stripe}" fill="${t.stripe}"/>
+      <text x="${c.center.x}" y="${c.center.y+11}" text-anchor="middle" font-family="${SANS}" font-size="31" font-weight="700" fill="${k === 'real' ? '#FFFFFF' : INK}">${c.num}</text>`;
   });
   s += `<polygon id="cell-hl-base" points="" fill="none" stroke="${INK}" stroke-width="10" stroke-linejoin="round"/>
   <polygon id="cell-hl" points="" fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>

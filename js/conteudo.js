@@ -48,19 +48,18 @@ const EQUIPES = [
   { firma: 'Grande Tormento',           sigla: 'GT',    cor: '#7A4FB5' }
 ];
 
-/* Tipos de casa. O tabuleiro é sóbrio de propósito: papel e tinta.
-   fill = cor da casa; stripe = faixa e rótulo; as únicas cores vivas
-   da tela ficam com as equipes. */
+/* Tipos de casa. fill = cor da casa no tabuleiro; stripe = faixa na borda.
+   Tons suaves de propósito: as cores fortes ficam com as equipes. */
 const TIPOS = {
-  aud:   { nome: 'Auditoria I',    tag: 'AUDITORIA I',  fill: '#FBF8EF', stripe: '#1B2638', desc: 'Fundamentos, risco, materialidade, evidência, relatório. Fácil 10, média 20, difícil 30.' },
-  aud2:  { nome: 'Auditoria II',   tag: 'AUDITORIA II', fill: '#EDE8DA', stripe: '#1B2638', desc: 'Testes do ativo não circulante: imobilizado, intangível, impairment.' },
-  eti:   { nome: 'Ética',          tag: 'ÉTICA',        fill: '#FBF8EF', stripe: '#5C6170', desc: 'Código de Ética, independência, sigilo, conflitos de interesse.' },
-  caso:  { nome: 'Caso prático',   tag: 'CASO',         fill: '#EDE8DA', stripe: '#5C6170', desc: 'Situação de campo com decisão do auditor. 40 pontos.' },
-  real:  { nome: 'Caso real',      tag: 'CASO REAL',    fill: '#262A36', stripe: '#9E3A31', desc: 'Escândalos que mudaram a auditoria, com curiosidade no fim. 40 pontos.' },
-  dil:   { nome: 'Dilema ético',   tag: 'DILEMA',       fill: '#FBF8EF', stripe: '#9E3A31', desc: 'Resposta aberta. A equipe argumenta e o professor avalia: 0, 20 ou 40.' },
-  rel:   { nome: 'Relâmpago',      tag: 'TODOS',        fill: '#FFFFFF', stripe: '#9E3A31', desc: 'Verdadeiro ou falso para todas as equipes ao mesmo tempo. 10 pontos cada.' },
-  sorte: { nome: 'Sorte ou revés', tag: 'SORTE',        fill: '#D9D5CB', stripe: '#5C6170', desc: 'Episódios da vida real da auditoria: ganha ou perde pontos ou casas.' },
-  pausa: { nome: 'Perde a vez',    tag: 'PAUSA',        fill: '#D9D5CB', stripe: '#5C6170', desc: 'A equipe fica uma rodada sem jogar.' }
+  aud:   { nome: 'Auditoria I',    tag: 'AUDITORIA I',  fill: '#D3DDEC', stripe: '#3F5475', desc: 'Fundamentos, risco, materialidade, evidência, relatório. Fácil 10, média 20, difícil 30.' },
+  aud2:  { nome: 'Auditoria II',   tag: 'AUDITORIA II', fill: '#CFE3DF', stripe: '#35685F', desc: 'Testes do ativo não circulante: imobilizado, intangível, impairment.' },
+  eti:   { nome: 'Ética',          tag: 'ÉTICA',        fill: '#E3D8EA', stripe: '#674A7C', desc: 'Código de Ética, independência, sigilo, conflitos de interesse.' },
+  caso:  { nome: 'Caso prático',   tag: 'CASO',         fill: '#EADCC6', stripe: '#7A5A33', desc: 'Situação de campo com decisão do auditor. 40 pontos.' },
+  real:  { nome: 'Caso real',      tag: 'CASO REAL',    fill: '#2B2F3A', stripe: '#9E3A31', desc: 'Escândalos que mudaram a auditoria, com curiosidade no fim. 40 pontos.' },
+  dil:   { nome: 'Dilema ético',   tag: 'DILEMA',       fill: '#EED5D5', stripe: '#8A3C46', desc: 'Resposta aberta. A equipe argumenta e o professor avalia: 0, 20 ou 40.' },
+  rel:   { nome: 'Relâmpago',      tag: 'TODOS',        fill: '#FFFFFF', stripe: '#1B2230', desc: 'Verdadeiro ou falso para todas as equipes ao mesmo tempo. 10 pontos cada.' },
+  sorte: { nome: 'Sorte ou revés', tag: 'SORTE',        fill: '#E6E1C9', stripe: '#7D7134', desc: 'Episódios da vida real da auditoria: ganha ou perde pontos ou casas.' },
+  pausa: { nome: 'Perde a vez',    tag: 'PAUSA',        fill: '#CFCBC2', stripe: '#4E5360', desc: 'A equipe fica uma rodada sem jogar.' }
 };
 
 /* ==================================================================
