@@ -840,6 +840,9 @@ const EVENTOS = [
   {titulo:'Melhoria que era conserto', texto:'Conserto de goteira foi parar no imobilizado e passou no teste de adições.', efeito:{pts:-10}},
   {titulo:'Um Lannister sempre paga suas dívidas', texto:'Foi o que o diretor financeiro garantiu. A circularização dos fornecedores achou R$ 2 milhões em aberto.', efeito:{pts:-10}},
   {titulo:'Casamento Vermelho', texto:'A equipe aceitou o convite para o casamento do diretor financeiro do cliente. Ameaça de familiaridade e emboscada na revisão de qualidade.', efeito:{pts:-15}},
+  {titulo:'Pivô! Pivô! Pivô!', texto:'O cliente mudou o plano de contas três dias antes do fechamento e a equipe teve que girar todos os papéis de trabalho escada acima.', efeito:{mover:-2}},
+  {titulo:'Esquema do Agostinho', texto:'Um taxista ofereceu ao cliente um bloco de recibos de corrida em branco para justificar despesas de viagem. A equipe achou no teste de despesas.', efeito:{pts:10}},
+  {titulo:'O Lineu revisou', texto:'O servidor mais correto do subúrbio carioca revisou os papéis de trabalho: tudo dentro da norma, carimbado e sem jeitinho.', efeito:{pts:15}},
   {titulo:'Sistema fora do ar', texto:'O ERP do cliente caiu no dia da extração de dados.', efeito:{mover:-2}},
   {titulo:'Multa recorde', texto:'O regulador encontrou falhas graves nos papéis de trabalho, como a FRC britânica no caso Carillion (£ 21 milhões, 2023).', efeito:{pts:-15}}
 ];
@@ -847,12 +850,16 @@ const PAUSAS = [
   {titulo:'Independência comprometida', texto:'Um membro da equipe tinha ações do cliente. A equipe precisa ser refeita.'},
   {titulo:'Chegou a SOX', texto:'A equipe passa uma rodada documentando controles internos para a seção 404.'},
   {titulo:'Retrabalho', texto:'Os testes de controle foram feitos com a população errada.'},
-  {titulo:'Evidência insuficiente', texto:'Faltou base para sustentar a conclusão sobre o impairment.'}
+  {titulo:'Evidência insuficiente', texto:'Faltou base para sustentar a conclusão sobre o impairment.'},
+  {titulo:'Café no Central Perk', texto:'A equipe sentou no sofá laranja para um café rápido e perdeu a reunião de encerramento.'},
+  {titulo:'Pastel no Beiçola', texto:'A equipe parou para um pastel e a conversa foi longe. Conferir o caixa da pastelaria ficou para outro dia.'}
 ];
 
 /* [EDITAR-PIADAS] Aparecem na TV e nos celulares quando a equipe acerta ou erra.
    Os casos reais também têm uma piada própria, mostrada depois da resposta. */
 const PIADAS_ACERTO = [
+  'O Lineu aprovaria: tudo dentro da norma, sem jeitinho.',
+  'Como você está? Essa equipe está sem ressalvas.',
   'Um Lannister sempre paga suas dívidas. Essa equipe sempre acerta as suas.',
   'Nem a Lava Jato acharia erro nessa.',
   'Balanço fechado no prazo e sem ressalva.',
@@ -871,6 +878,9 @@ const PIADAS_ACERTO = [
   'Distorção relevante: zero.'
 ];
 const PIADAS_ERRO = [
+  'Essa distorção poderia SER mais relevante?',
+  '"A gente estava dando um tempo!" O prazo da CVM não deu tempo nenhum.',
+  'Isso aí foi esquema do Agostinho.',
   'Você não sabe nada, auditor.',
   'Essa resposta foi direto pro risco sacado.',
   'A CVM abriu um processo administrativo contra essa resposta.',

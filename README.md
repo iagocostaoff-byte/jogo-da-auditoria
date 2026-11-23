@@ -101,6 +101,8 @@ Rode um servidor local nesta pasta (por exemplo, `python3 -m http.server`) e abr
 | Casamento Vermelho | Carta de revés: aceitar convite para o casamento do diretor financeiro do cliente |
 | O fechamento está chegando | Aviso quando faltam 5 minutos de jogo |
 | Trono de Ferro | O Auditor-Sócio do mata-mata vira dono do Trono de Ferro dos papéis de trabalho |
+| Friends | Cartas "Pivô! Pivô! Pivô!" (revés) e "Café no Central Perk" (perde a vez); piadas "Como você está?", "poderia SER mais relevante?" e "a gente estava dando um tempo" |
+| A Grande Família | Cartas "O Lineu revisou" e "Esquema do Agostinho" (sorte) e "Pastel no Beiçola" (perde a vez); piadas do Lineu e do Agostinho |
 | Prêmios do parecer | No pódio: Cynthia Cooper, Ladrão de Evidências, Fragmentadora de Ouro, Repo 105, Parecer emitido e Abstenção de opinião (quem terminou com zero) |
 
 As regras e pontos das surpresas ficam em `[EDITAR-CONFIG]` (`CASA_FECHAMENTO`, `SEQUENCIA_SEM_RESSALVAS`, `PONTOS.cvm`, `PONTOS.fechamento`).
