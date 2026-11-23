@@ -126,13 +126,27 @@ const equipeDe = pid => { const j = ui.jogadores[pid]; return j && typeof j.equi
 const totalCelulares = () => Object.keys(ui.jogadores).length;
 const temCapitao = t => !!capitao(t);
 
+/* Depois que a partida começa, cada celular fica preso à equipe que escolheu.
+   Quem chega atrasado escolhe uma vez e também fica preso. Só assistir (-1) não trava. */
+function travaEquipes(j){
+  if(!state || state.phase === 'lobby') return j;
+  const fixa = state.equipeFixa = state.equipeFixa || {};
+  const out = {};
+  for(const pid in j){
+    const info = j[pid]; if(!info){ out[pid] = info; continue; }
+    if(fixa[pid] != null) out[pid] = Object.assign({}, info, { equipe: fixa[pid] });
+    else { if(typeof info.equipe === 'number' && info.equipe >= 0 && info.equipe < state.groups.length) fixa[pid] = info.equipe; out[pid] = info; }
+  }
+  return out;
+}
+
 function abrirSala(codigo){
   if(sala) return;
   state.sala = codigo;
   sala = Rede.hospedar(codigo, {
     onJogadores(j){
       const antes = totalCelulares();
-      ui.jogadores = j || {};
+      ui.jogadores = travaEquipes(j || {});
       if(totalCelulares() > antes) sfx.join();
       renderLobby(); if(!$('#app').hidden){ renderScores(); renderBadge(); if(ui.card) renderCard(); }
       sync();
@@ -160,6 +174,7 @@ function recebeMensagem(m){
   if(m.t === 'dado'){
     if(t === state.cur && (ui.phase === 'idle' || ui.phase === 'skip') && $('#confirm').hidden) primary();
   } else if(m.t === 'resp'){
+    if(ui.timer && ui.timer.expired) return;        // tempo esgotado: não aceita mais
     if(c && c.kind === 'q' && c.stage === 'answer' && c.who === t && c.q.id === m.carta && c.pending == null){
       const i = Number(m.alt);
       if(i >= 0 && i < c.q.alternativas.length && !c.wrong.includes(i)){
@@ -170,6 +185,7 @@ function recebeMensagem(m){
   } else if(m.t === 'repasse'){
     if(c && c.kind === 'q' && c.stage === 'steal' && podemRoubar(c).includes(t)) roubar(t);
   } else if(m.t === 'vf'){
+    if(ui.timer && ui.timer.expired) return;
     if(c && c.kind === 'rel' && c.stage === 'answer' && c.r.id === m.carta && c.vf[t] === undefined){
       c.vf[t] = !!m.val; renderCard();
       const comCel = state.groups.map((g, i) => i).filter(temCapitao);
@@ -185,7 +201,7 @@ function avatarValido(m){
   return false;
 }
 function recebeAvatar(m){
-  if(!state || !(state.phase === 'lobby' || state.phase === 'play')) return;
+  if(!state || state.phase !== 'lobby') return;   // depois que o professor começa a partida, a imagem fica travada
   const t = equipeDe(m.pid);
   if(t < 0 || !ehCapitao(m.pid, t)) return;
   if(m.tipo == null) state.groups[t].avatar = null;
@@ -212,7 +228,7 @@ function sync(){
 function estadoPublico(){
   const fase = state.phase === 'lobby' ? 'lobby' : state.phase === 'end' ? (state.mm && state.mm.ativo ? 'matamata' : (ui.revelaAte > Date.now() ? 'apurando' : 'fim')) : 'jogo';
   const est = {
-    v: ++seq, versao: Rede.VERSAO, sala: state.sala, fase,
+    v: ++seq, versao: Rede.VERSAO, sala: state.sala, fase, fixas: state.phase === 'lobby' ? null : (state.equipeFixa || {}),
     rodada: state.round, rodadas: state.rounds, vez: state.cur, turno: ui.phase, dado: ui.lastDie,
     equipes: state.groups.map((g, i) => {
       const cap = capitao(i);
@@ -426,7 +442,7 @@ $('#teams-grid').addEventListener('click', e => {
   ui.capFix[+b.dataset.cap] = b.dataset.pid; renderLobby(); sync();
 });
 $('#btn-lobby-go').onclick = () => {
-  if(state.phase === 'lobby'){ state.phase = 'play'; enterGame(); beginTurn(); }
+  if(state.phase === 'lobby'){ state.phase = 'play'; ui.jogadores = travaEquipes(ui.jogadores); enterGame(); beginTurn(); }
   else { $('#lobby').hidden = true; renderAll(); }
 };
 $('#btn-lobby-back').onclick = () => { $('#lobby').hidden = true; $('#setup').hidden = false; buildSetup(); };
@@ -1183,9 +1199,22 @@ function startTimer(sec){
     const t = ui.timer; if(!t || !t.running) return;
     t.left--;
     if(t.left <= 5 && t.left > 0) sfx.tick();
-    if(t.left <= 0){ t.left = 0; t.running = false; t.expired = true; clearInterval(t.h); sfx.end(); if(ui.card) renderCard(); }
+    if(t.left <= 0){ t.left = 0; t.running = false; t.expired = true; clearInterval(t.h); sfx.end(); tempoEsgotado(); }
     paintTimer(); sync();
   }, 1000);
+}
+/* Tempo esgotado: ninguém responde mais. Pergunta vira "não respondeu" (abre o roubo, se houver);
+   relâmpago é revelado com as respostas que chegaram. */
+function tempoEsgotado(){
+  const c = ui.card; if(!c) return;
+  if(c.kind === 'q' && c.stage === 'answer'){
+    if(c.pending != null) return;          // resposta chegou no último segundo: deixa concluir
+    chooseAlt(-1);
+    if(ui.piada) ui.piada.sub = `${state.groups[c.who === undefined ? state.cur : c.who].name} não respondeu a tempo`;
+    renderCard(); sync();
+  } else if(c.kind === 'rel' && c.stage === 'answer'){
+    revelarRelampago(); sync();
+  } else renderCard();
 }
 function stopTimer(){ if(ui.timer){ clearInterval(ui.timer.h); } ui.timer = null; }
 function togglePause(){

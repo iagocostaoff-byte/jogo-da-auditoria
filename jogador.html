@@ -6,7 +6,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#11151C">
 <title>Trilha de Auditoria · Equipe</title>
-<link rel="stylesheet" href="fonts/fontes.css?v=11">
+<link rel="stylesheet" href="fonts/fontes.css?v=12">
 <style>
 /* Trilha de Auditoria · tela do celular (capitão e torcida). Licença MIT. */
 /* Layout: uma coluna, faixa da equipe no topo, ação principal sempre em
@@ -149,11 +149,11 @@ main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 </main>
 
 <input type="file" id="foto" accept="image/*" hidden>
-<script src="js/firebase-config.js?v=11"></script>
+<script src="js/firebase-config.js?v=12"></script>
 <script src="js/vendor/firebase-app-compat.js"></script>
 <script src="js/vendor/firebase-database-compat.js"></script>
 <script src="js/vendor/mqtt.min.js"></script>
-<script src="js/rede.js?v=11"></script>
+<script src="js/rede.js?v=12"></script>
 <script>
 /* ==================================================================
    Tela do celular. O capitão (primeiro celular de cada equipe) lança o
@@ -205,7 +205,7 @@ function conectar(){
   const salvo = ls('trilha-equipe-' + salaCod + '-' + pid);
   if(salvo !== null && salvo !== '') me.equipe = Number(salvo);
   conn = Rede.entrar(salaCod, pid, { nome: me.nome, equipe: me.equipe == null ? -2 : me.equipe }, {
-    onEstado(e){ est = e; if(e) achou = true; render(); checaLetreiros(); },
+    onEstado(e){ est = e; if(e) achou = true; acertaEquipe(); render(); checaLetreiros(); },
     onConexao(ok){ conectado = ok; if(!ok && est) toast('Sem conexão. Tentando de novo…'); },
     onErro(e){ erroRede = e; render(); }
   });
@@ -220,7 +220,13 @@ function escolher(t){
   conn.atualizar({ equipe: t, nome: me.nome });
   render();
 }
-function trocar(){ me.equipe = null; ls('trilha-equipe-' + salaCod + '-' + pid, ''); conn.atualizar({ equipe: -2 }); render(); }
+/* Partida começada: a TV manda a equipe travada de cada celular */
+function acertaEquipe(){
+  const fx = est && est.fixas && est.fixas[pid];
+  if(fx != null && me.equipe !== fx){ me.equipe = fx; ls('trilha-equipe-' + salaCod + '-' + pid, String(fx)); if(conn) conn.atualizar({ equipe: fx }); }
+}
+const equipeTravada = () => !!(est && est.fixas && est.fixas[pid] != null);
+function trocar(){ if(equipeTravada()) return; me.equipe = null; ls('trilha-equipe-' + salaCod + '-' + pid, ''); conn.atualizar({ equipe: -2 }); render(); }
 function enviar(msg){ if(conn) conn.enviar(msg); }
 
 let toastT = null;
@@ -272,9 +278,8 @@ function renderTela(){
     h += acaoPrincipal(eq, cap);
     h += cartaHtml(eq, cap);
     h += placar();
-    if(cap) h += avatarAberto ? avatarHtml(eq, false) : `<button class="link" id="av-abrir">Imagem do pino da equipe</button>`;
   }
-  h += `<button class="link" id="trocar">Trocar de equipe</button>`;
+  if(!equipeTravada()) h += `<button class="link" id="trocar">Trocar de equipe</button>`;
   v.innerHTML = h;
   bindJogo(cap);
 }
@@ -337,7 +342,8 @@ function cartaHtml(eq, cap){
   const quem = est.equipes[c.who];
   if(c.kind === 'q'){
     const key = c.id + ':' + c.who + ':' + c.wrong.length;
-    const podeResponder = cap && c.stage === 'answer' && c.who === me.equipe && c.pending == null && !enviado[key];
+    const esgotou = !!(est.timer && est.timer.left <= 0);
+    const podeResponder = cap && c.stage === 'answer' && c.who === me.equipe && c.pending == null && !enviado[key] && !esgotou;
     const podeRoubar = cap && c.stage === 'steal' && (c.podemRoubar || []).includes(me.equipe);
     let h = `<div class="card"><div class="card-band ${c.tipo === 'real' ? 'real' : ''}"><span><b>${esc(c.titulo)}</b><small>${esc(c.nivel)} · ${c.pontos} pontos · responde ${esc(quem.nome)}</small></span>${c.stage === 'answer' ? timerHtml() : ''}</div><div class="card-body">`;
     if(c.contexto) h += `<p class="ctx">${esc(c.contexto)}</p>`;
@@ -351,7 +357,8 @@ function cartaHtml(eq, cap){
       return `<button class="alt ${cls}" data-alt="${i}" ${podeResponder && !c.wrong.includes(i) ? '' : 'disabled'}><span class="lt">${LETRAS[i]}</span><span>${esc(a)}</span></button>`;
     }).join('') + `</div>`;
     if(c.stage === 'answer'){
-      if(podeResponder) h += `<p class="note">Discutam e toque na resposta da equipe. Não dá para voltar atrás.</p>`;
+      if(esgotou && c.who === me.equipe) h += `<p class="note">Tempo esgotado: não dá mais para responder.</p>`;
+      else if(podeResponder) h += `<p class="note">Discutam e toque na resposta da equipe. Não dá para voltar atrás.</p>`;
       else if(c.who === me.equipe && !cap) h += `<p class="note">Ajude a equipe: quem responde é o capitão.</p>`;
       else if(c.pending != null || enviado[key] !== undefined) h += `<p class="note">Resposta enviada. Olhe para a TV!</p>`;
     }
@@ -365,7 +372,7 @@ function cartaHtml(eq, cap){
   }
   if(c.kind === 'rel'){
     const respondeu = c.responderam.includes(me.equipe) || enviado[c.id] !== undefined;
-    const pode = cap && c.stage === 'answer' && !respondeu;
+    const pode = cap && c.stage === 'answer' && !respondeu && !(est.timer && est.timer.left <= 0);
     let h = `<div class="card"><div class="card-band"><span><b>Relâmpago: todas as equipes</b><small>Verdadeiro ou falso · 10 pontos</small></span>${c.stage === 'answer' ? timerHtml() : ''}</div><div class="card-body"><p class="q">${esc(c.afirmacao)}</p>`;
     const sel = enviado[c.id];
     h += `<div class="vf"><button data-vf="1" class="${sel === true ? 'sel' : ''} ${c.resposta === true ? 'right' : ''}" ${pode ? '' : 'disabled'}>Verdadeiro</button><button data-vf="0" class="${sel === false ? 'sel' : ''} ${c.resposta === false ? 'right' : ''}" ${pode ? '' : 'disabled'}>Falso</button></div>`;
