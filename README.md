@@ -90,8 +90,16 @@ Rode um servidor local nesta pasta (por exemplo, `python3 -m http.server`) e abr
 
 | Surpresa | Como acontece |
 |---|---|
-| Auditoria surpresa da CVM | Dois 6 seguidos no dado: verdadeiro ou falso só para essa equipe, valendo o dobro |
-| Fechamento do exercício | Quem para na casa 31 (31/12) ganha +10 por fechar o balanço no prazo |
+| Auditoria surpresa da CVM | Dois 6 seguidos no dado: letreiro AUDITORIA SURPRESA e verdadeiro ou falso só para essa equipe, valendo o dobro |
+| Fechamento do exercício | Quem para na casa 12 (dezembro) ganha +10 por fechar o balanço no prazo |
+| Revisão intermediária | Quem completa o laço esquerdo (passa da casa 18 para a 19) ganha +10 e o letreiro REVISADO |
+| Conflito de interesses | Duas equipes na mesma casa: aviso de ameaça à independência (no máximo um por rodada) |
+| Delação premiada e Casamento Vermelho | Roubo de Evidência certeiro: a piada vira delação premiada e a equipe roubada sofre o Casamento Vermelho |
+| Continuidade operacional | Na metade da partida, equipe com zero pontos ganha o selo "Continuidade em dúvida" (NBC TA 570) até pontuar |
+| Resposta rápida | Resposta pelo celular em menos de 6 segundos: "Analytics de ponta" (acerto) ou "Nem leu a NBC" (erro) |
+| Pivô! | Desfazer um turno (tecla Z) mostra "Pivô! Pivô! Pivô!" |
+| RODADA FINAL | Letreiro quando o relógio da partida zera |
+| Piadas de cultura pop | Cerca de 1 em cada 3 piadas vem da lista de Game of Thrones, Friends, A Grande Família e GTA |
 | Carimbo AUDITADO | Acerto em pergunta difícil, caso prático, caso real ou surpresa da CVM |
 | Sem ressalvas | 3 acertos seguidos dão o título no placar, até o primeiro erro |
 | Fragmentadora | Digite ENRON no teclado da TV: a carta (ou o tabuleiro) é triturada |
@@ -108,7 +116,20 @@ Rode um servidor local nesta pasta (por exemplo, `python3 -m http.server`) e abr
 | A Grande Família | Cartas "O Lineu revisou" e "Esquema do Agostinho" (sorte) e "Pastel no Beiçola" (perde a vez); piadas do Lineu e do Agostinho |
 | Prêmios do parecer | No pódio: Cynthia Cooper, Ladrão de Evidências, Fragmentadora de Ouro, Repo 105, Parecer emitido e Abstenção de opinião (quem terminou com zero) |
 
-As regras e pontos das surpresas ficam em `[EDITAR-CONFIG]` (`CASA_FECHAMENTO`, `SEQUENCIA_SEM_RESSALVAS`, `PONTOS.cvm`, `PONTOS.fechamento`).
+As regras e pontos das surpresas ficam em `[EDITAR-CONFIG]` (`CASA_FECHAMENTO`, `CASA_REVISAO`, `SEQUENCIA_SEM_RESSALVAS`, `PIADA_POP_CHANCE`, `PONTOS.cvm`, `PONTOS.fechamento`, `PONTOS.revisao`).
+
+## Banco de perguntas e repetição
+
+São 306 itens: 75 de Auditoria I, 44 de Auditoria II, 46 de Ética, 21 casos práticos, 16 casos reais,
+16 dilemas éticos, 38 de verdadeiro ou falso e 50 do mata-mata.
+
+Nenhuma pergunta se repete dentro de uma partida. Entre partidas, o computador da TV guarda o histórico
+e cada partida usa primeiro as perguntas que ainda não saíram; quando um baralho acaba, ele recomeça.
+A tela inicial mostra quantas perguntas ainda são inéditas e tem o botão **Zerar histórico de perguntas**.
+O histórico fica no navegador da TV: em outro computador, tudo volta a ser inédito.
+
+Nos **dilemas éticos**, a equipe escolhe a conduta no celular: a melhor vale 40, uma conduta aceitável
+mas incompleta vale 20 e as inadequadas valem 0. Na revelação, a TV mostra quanto valia cada alternativa.
 
 ## Como editar perguntas e regras
 
@@ -124,7 +145,7 @@ Tudo fica em `js/conteudo.js`. Procure as marcações:
 | `[EDITAR-ETICA]` | perguntas de Ética |
 | `[EDITAR-CASOS]` | casos práticos fictícios |
 | `[EDITAR-REAIS]` | casos reais, com contexto, piada e fonte |
-| `[EDITAR-DILEMAS]` | dilemas éticos de resposta aberta |
+| `[EDITAR-DILEMAS]` | dilemas éticos: a melhor conduta vale 40 e condutas aceitáveis (`parcial`) valem 20 |
 | `[EDITAR-RELAMPAGO]` | verdadeiro ou falso para todas as equipes |
 | `[EDITAR-EVENTOS]` | sorte ou revés e perde a vez |
 | `[EDITAR-PIADAS]` | frases de acerto e de erro |

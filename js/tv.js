@@ -10,8 +10,8 @@ const SAVE_KEY = 'trilha-de-auditoria-facc-v4';
 const $ = s => document.querySelector(s);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const NIVEL = { facil: 'Fácil', media: 'Média', dificil: 'Difícil', caso: 'Caso prático', real: 'Caso real', cvm: 'Surpresa' };
-const DIFICEIS = ['dificil', 'caso', 'real', 'cvm'];   // acerto dessas ganha o carimbo AUDITADO
+const NIVEL = { facil: 'Fácil', media: 'Média', dificil: 'Difícil', caso: 'Caso prático', real: 'Caso real', cvm: 'Surpresa', dilema: 'Dilema ético' };
+const DIFICEIS = ['dificil', 'caso', 'real', 'cvm', 'dilema'];   // acerto dessas ganha o carimbo AUDITADO
 const LETRAS = ['A', 'B', 'C', 'D', 'E'];
 
 let state = null;      // tudo que é salvo e pode ser desfeito
@@ -40,7 +40,15 @@ const curGroup = () => state.groups[state.cur];
 
 /* Piadas sem repetir até esgotar a lista */
 const piadaBolsa = { ok: [], no: [] };
+/* Registro dos easter eggs que apareceram (para conferir e para o relatório) */
+function ovo(nome){ (ui.ovos = ui.ovos || []).push(nome); }
 function piada(tipo){
+  const pop = tipo === 'ok' ? PIADAS_POP_ACERTO : PIADAS_POP_ERRO;
+  if(Math.random() < CONFIG.PIADA_POP_CHANCE){
+    const k = 'pop' + tipo;
+    if(!piadaBolsa[k] || !piadaBolsa[k].length) piadaBolsa[k] = pop.slice().sort(() => Math.random() - 0.5);
+    ovo('piada pop'); return piadaBolsa[k].pop();
+  }
   const fonte = tipo === 'ok' ? PIADAS_ACERTO : PIADAS_ERRO;
   if(!piadaBolsa[tipo].length) piadaBolsa[tipo] = fonte.slice().sort(() => Math.random() - 0.5);
   return piadaBolsa[tipo].pop();
@@ -236,6 +244,7 @@ function cartaPublica(c){
       steal: c.steal, tried: c.tried, wrong: c.wrong, pending: c.pending == null ? null : c.pending,
       correta: rev ? q.correta : null, explicacao: rev ? q.explicacao : null, result: rev ? c.result : null,
       awarded: rev ? (c.awarded || 0) : null, winner: rev && c.result === 'ok' ? c.winner : null,
+      parcial: rev && q.parcial ? q.parcial : null,
       piadaCaso: rev && q.piada ? q.piada : null, rouboVale: Math.round(CONFIG.PONTOS[q.nivel] * CONFIG.ROUBO_FRACAO), podemRoubar: c.stage === 'steal' ? podemRoubar(c) : []
     });
   }
@@ -323,6 +332,11 @@ function buildSetup(){
     <button data-mm="1" class="${setupCfg.matamata ? 'sel' : ''}">Com mata-mata<small>Auditor-Sócio no fim</small></button>
     <button data-mm="0" class="${!setupCfg.matamata ? 'sel' : ''}">Sem mata-mata<small>termina no pódio</small></button>`;
   $('#seg-mm').onclick = e => { const b = e.target.closest('button'); if(!b) return; readNames(); setupCfg.matamata = b.dataset.mm === '1'; buildSetup(); };
+
+  const ine = ineditas();
+  $('#hist-help').textContent = `${ine.livres} de ${ine.total} perguntas ainda não saíram neste computador. Cada partida usa primeiro as inéditas.`;
+  $('#btn-hist').hidden = ine.livres === ine.total;
+  $('#btn-hist').onclick = () => askConfirm('Zerar o histórico? As perguntas que já saíram voltam a valer como inéditas.', 'Zerar histórico', () => { guardaHistorico({}); buildSetup(); });
 
   $('#rules-box').innerHTML = rulesHtml();
   const saved = loadSave();
@@ -622,7 +636,7 @@ function renderScores(){
     const cel = state.sala ? (n ? ` · ${n} cel. · cap. ${cap ? cap.nome : ''}` : ' · sem celular') : '';
     return `<div class="score-row ${o.i === state.cur ? 'now' : ''}" data-gi="${o.i}" style="--team:${team(o.i).cor}">
       <span class="rk num">${rank+1}º</span>${chipHtml(o.i)}
-      <div class="nm"><b>${esc(o.g.name)}${semRessalvas(o.g) ? ' <span class="badge-sr">Sem ressalvas</span>' : ''}</b><span>${o.g.pos > 0 ? 'casa ' + o.g.pos : 'início'} · ${o.g.ok} acertos${o.g.skip ? ' · perde a vez' : ''}${roubosRestantes(o.i) > 0 ? '' : ' · roubo usado'}${esc(cel)}</span></div>
+      <div class="nm"><b>${esc(o.g.name)}${semRessalvas(o.g) ? ' <span class="badge-sr">Sem ressalvas</span>' : ''}${o.g.continuidade && o.g.pts === 0 ? ' <span class="badge-sr badge-gc">Continuidade em dúvida</span>' : ''}</b><span>${o.g.pos > 0 ? 'casa ' + o.g.pos : 'início'} · ${o.g.ok} acertos${o.g.skip ? ' · perde a vez' : ''}${roubosRestantes(o.i) > 0 ? '' : ' · roubo usado'}${esc(cel)}</span></div>
       <div><div class="pts num">${ui.ptsVis[o.i] != null ? ui.ptsVis[o.i] : o.g.pts}</div><div class="adj"><button data-adj="${o.i}" data-d="-5" aria-label="Tirar 5 pontos">−5</button><button data-adj="${o.i}" data-d="5" aria-label="Dar 5 pontos">+5</button></div></div>
     </div>`;
   }).join('');
@@ -664,6 +678,20 @@ function beginTurn(){
   const g = curGroup();
   if(g.skip){ g.skip = false; ui.phase = 'skip'; } else ui.phase = 'idle';
   renderAll();
+  checaContinuidade();
+}
+/* Na metade da partida, equipe com zero pontos ganha a ressalva de continuidade (NBC TA 570) */
+function checaContinuidade(){
+  if(state.metadeVista) return;
+  const metade = state.relogio ? state.relogio.restante <= state.relogio.total / 2 : state.round > state.rounds / 2;
+  if(!metade) return;
+  state.metadeVista = true;
+  const zeradas = state.groups.filter(g => g.pts === 0);
+  if(!zeradas.length) return;
+  zeradas.forEach(g => { g.continuidade = true; });
+  ovo('continuidade operacional');
+  toast(`Metade da partida. Continuidade operacional em dúvida: ${zeradas.map(g => g.name).join(', ')} (NBC TA 570).`);
+  renderScores();
 }
 
 function primary(){
@@ -684,14 +712,22 @@ async function roll(){
   const doisSeis = ui.lastDie === 6 && n === 6;
   setDie(n); die.classList.remove('rolling'); ui.lastDie = n;
   toast(doisSeis ? `Dois 6 seguidos! Auditoria surpresa da CVM para ${curGroup().name}` : `${curGroup().name} tirou ${n}`);
+  if(doisSeis){ ovo('auditoria surpresa'); telaGame('Auditoria surpresa', `dois 6 seguidos · ${curGroup().name} · vale o dobro`, true); }
   await sleep(450);
   ui.phase = 'moving'; renderTurn(); sync();
   await movePawn(state.cur, n);
   const g = curGroup();
   if(g.pos === CONFIG.CASA_FECHAMENTO){
-    g.pts += CONFIG.PONTOS.fechamento; sfx.ok(); renderScores();
-    toast(`Casa ${g.pos} = 31/12, fechamento do exercício: balanço fechado no prazo, +${CONFIG.PONTOS.fechamento}!`);
+    addPts(state.cur, CONFIG.PONTOS.fechamento); sfx.ok(); ovo('fechamento');
+    toast(`Casa ${g.pos}, dezembro: fechamento do exercício! Balanço fechado no prazo, +${CONFIG.PONTOS.fechamento}.`);
     await sleep(1800);
+  }
+  const vizinhos = state.groups.filter((o, i) => i !== state.cur && o.pos === g.pos && g.pos > 0);
+  if(vizinhos.length && state.conflitoRodada !== state.round){
+    state.conflitoRodada = state.round;   // no máximo um aviso por rodada
+    ovo('conflito de interesses');
+    toast(`Conflito de interesses: ${g.name} e ${vizinhos.map(o => o.name).join(', ')} na mesma casa. Ameaça à independência!`);
+    await sleep(1500);
   }
   if(doisSeis){ openCard('cvm'); return; }
   const tipo = TRILHA[g.pos - 1];
@@ -709,7 +745,14 @@ async function movePawn(gi, steps){
         addPts(gi, CONFIG.PONTOS.volta); sfx.ok();
         toast(`Volta completa! Parecer emitido: +${CONFIG.PONTOS.volta} para ${g.name}`);
         telaGame('Parecer emitido', `+${CONFIG.PONTOS.volta} · ${g.name}`, true);
-      } else g.pos++;
+      } else {
+        g.pos++;
+        if(g.pos === CONFIG.CASA_REVISAO + 1 && g.revisao !== g.voltas){
+          g.revisao = g.voltas; addPts(gi, CONFIG.PONTOS.revisao); sfx.ok(); ovo('revisão intermediária');
+          toast(`Laço esquerdo completo: revisão intermediária aprovada, +${CONFIG.PONTOS.revisao} para ${g.name}`);
+          telaGame('Revisado', `+${CONFIG.PONTOS.revisao} · revisão intermediária · ${g.name}`, true);
+        }
+      }
     } else {
       g.pos = Math.max(1, g.pos - 1);
     }
@@ -789,6 +832,7 @@ function undo(){
     const relogio = state.relogio;
     state = JSON.parse(ui.history[ui.history.length - 1]);
     ui.ptsVis = {}; ui.vooTok = {};
+    ovo('pivô'); setTimeout(() => toast('Pivô! Pivô! Pivô! Turno desfeito.'), 100);
     ui.history.pop();
     if(relogio) state.relogio = relogio;   // desfazer não devolve tempo de jogo
     renderBoard(); beginTurn();
@@ -799,17 +843,41 @@ function undo(){
 /* ==================================================================
    CARTAS
    ================================================================== */
+/* Histórico entre partidas (fica neste computador): cada partida prefere perguntas
+   que ainda não saíram em partidas anteriores. Quando um baralho acaba, ele recomeça. */
+const HIST_KEY = 'trilha-historico-perguntas';
+function historico(){ try{ return JSON.parse(localStorage.getItem(HIST_KEY)) || {}; }catch(e){ return {}; } }
+function guardaHistorico(h){ try{ localStorage.setItem(HIST_KEY, JSON.stringify(h)); }catch(e){} }
+function marcaHistorico(key, id){ const h = historico(); (h[key] = h[key] || []); if(!h[key].includes(id)) h[key].push(id); guardaHistorico(h); }
+function ineditas(){
+  const h = historico(), baralhos = Object.assign({}, DECKS, { mm: MATAMATA });
+  let livres = 0, total = 0;
+  for(const k in baralhos){ total += baralhos[k].length; livres += baralhos[k].filter(x => !(h[k] || []).includes(x.id)).length; }
+  return { livres, total };
+}
+function sorteiaSemRepetir(key, deck, usadasNaPartida){
+  const h = historico(), ja = h[key] || [];
+  let free = deck.filter(x => !usadasNaPartida.includes(x.id) && !ja.includes(x.id));
+  if(!free.length){
+    // tudo já saiu em partidas anteriores: recomeça o baralho, mas sem repetir dentro desta partida
+    h[key] = []; guardaHistorico(h);
+    free = deck.filter(x => !usadasNaPartida.includes(x.id));
+  }
+  return free.length ? free[Math.floor(Math.random() * free.length)] : null;
+}
 function draw(key){
   const deck = DECKS[key];
-  let free = deck.filter(x => !state.used[key].includes(x.id));
-  if(!free.length){ state.used[key] = []; free = deck.slice(); }
-  const it = free[Math.floor(Math.random() * free.length)];
+  let it = sorteiaSemRepetir(key, deck, state.used[key]);
+  if(!it){ state.used[key] = []; it = sorteiaSemRepetir(key, deck, []); }
   state.used[key].push(it.id);
+  marcaHistorico(key, it.id);
   return it;
 }
 function shuffled(q){
   const order = q.alternativas.map((_, i) => i).sort(() => Math.random() - 0.5);
-  return Object.assign({}, q, { alternativas: order.map(i => q.alternativas[i]), correta: order.indexOf(q.correta) });
+  const parcial = {};
+  if(q.parcial) for(const k in q.parcial) parcial[order.indexOf(+k)] = q.parcial[k];
+  return Object.assign({}, q, { alternativas: order.map(i => q.alternativas[i]), correta: order.indexOf(q.correta), parcial });
 }
 function efeitoTxt(ef){
   return ef.pts !== undefined ? `${ef.pts > 0 ? '+' : ''}${ef.pts} pontos` : (ef.mover > 0 ? `Avance ${ef.mover} casa${ef.mover > 1 ? 's' : ''}` : `Volte ${-ef.mover} casa${ef.mover < -1 ? 's' : ''}`);
@@ -829,8 +897,10 @@ function openCard(tipo){
     ui.card = { kind: 'q', tipo, q, who, stage: 'answer', steal: false, tried: [who], wrong: [], done: false, flag: false, pending: null };
     startTimer(state.tempo + (tipo === 'caso' || tipo === 'real' ? CONFIG.TEMPO_EXTRA_CASO : 0));
   } else if(tipo === 'dil'){
-    ui.card = { kind: 'dil', tipo, d: draw('dil'), who, stage: 'debate', done: false, flag: false };
-    startTimer(CONFIG.TEMPO_DILEMA);
+    // dilema: a equipe escolhe a conduta no celular; a melhor vale 40 e as aceitáveis valem parte
+    const q = shuffled(draw('dil'));
+    ui.card = { kind: 'q', tipo, q, who, stage: 'answer', steal: false, tried: [who], wrong: [], done: false, flag: false, pending: null };
+    startTimer(state.tempo + CONFIG.TEMPO_EXTRA_CASO);
   } else if(tipo === 'rel'){
     ui.card = { kind: 'rel', tipo, r: draw('rel'), who, stage: 'answer', hits: [], vf: {}, done: false, flag: false };
     startTimer(CONFIG.TEMPO_RELAMPAGO);
@@ -839,6 +909,7 @@ function openCard(tipo){
   } else {
     ui.card = { kind: 'pausa', tipo, e: PAUSAS[Math.floor(Math.random()*PAUSAS.length)], who, stage: 'show', done: false };
   }
+  ui.card.t0 = Date.now();
   $('#card-layer').hidden = false;
   renderCard();
 }
@@ -882,22 +953,23 @@ function renderCard(){
     if(c.tipo === 'cvm') h += `<div class="stamp">DOIS 6 SEGUIDOS · VALE O DOBRO</div>`;
     if(c.stage === 'reveal' && c.result === 'ok' && DIFICEIS.includes(q.nivel)) h += `<div class="carimbo ${c.carimbado ? '' : 'bate'}">AUDITADO</div>`;
     h += `<div class="card-body">${whoLine(c.who, '', (c.steal ? `<span class="tag steal">Roubo de Evidência · vale ${pts}</span>` : '') + house + phone)}`;
-    if(isReal) h += `<p class="situacao">${esc(q.contexto)}</p>`;
+    if(q.contexto) h += `<p class="situacao">${esc(q.contexto)}</p>`;
     h += `<p class="q-text">${esc(q.pergunta)}</p>`;
     if(c.stage !== 'answer' || c.wrong.length) h += verdictHtml();
     h += `<div class="alts">`;
     q.alternativas.forEach((a, i) => {
       let cls = '';
-      if(c.stage === 'reveal'){ cls = i === q.correta ? 'right' : (c.wrong.includes(i) ? 'wrong' : 'dim'); }
+      if(c.stage === 'reveal'){ cls = i === q.correta ? 'right' : (q.parcial && q.parcial[i] ? 'partial' : (c.wrong.includes(i) ? 'wrong' : 'dim')); }
       else if(c.wrong.includes(i)) cls = 'wrong';
       if(c.pending === i) cls = 'pending';
       const dis = c.stage !== 'answer' || c.wrong.includes(i) || c.pending != null;
-      h += `<button class="alt ${cls}" data-act="alt" data-i="${i}" ${dis ? 'disabled' : ''}><span class="lt">${LETRAS[i]}</span><span>${esc(a)}</span></button>`;
+      const valeAlt = c.stage === 'reveal' && q.nivel === 'dilema' ? `<small class="alt-pts">${i === q.correta ? CONFIG.PONTOS.dilema : (q.parcial && q.parcial[i]) || 0} pts</small>` : '';
+      h += `<button class="alt ${cls}" data-act="alt" data-i="${i}" ${dis ? 'disabled' : ''}><span class="lt">${LETRAS[i]}</span><span>${esc(a)}</span>${valeAlt}</button>`;
     });
     h += `</div>`;
     if(c.stage === 'reveal'){
-      const ok = c.result === 'ok';
-      h += `<div class="explain"><div class="res">${ok ? `+${c.awarded} para ${esc(state.groups[c.winner].name)}` : 'Ninguém acertou'}</div>${esc(q.explicacao)}<br><span class="norma">Referência: ${esc(q.norma)}${isReal ? ' · Fonte: ' + esc(q.fonte) : ''}</span></div>`;
+      const ok = c.result === 'ok' || c.result === 'parcial';
+      h += `<div class="explain"><div class="res">${ok ? `+${c.awarded} para ${esc(state.groups[c.winner].name)}${c.result === 'parcial' ? ' (conduta aceitável)' : ''}` : 'Ninguém acertou'}</div>${esc(q.explicacao)}<br><span class="norma">Referência: ${esc(q.norma)}${isReal ? ' · Fonte: ' + esc(q.fonte) : ''}</span></div>`;
       if(isReal && q.piada) h += `<div class="joke"><b>Para descontrair</b><span>${esc(q.piada)}</span></div>`;
     }
     h += `</div><div class="card-foot">`;
@@ -1010,7 +1082,7 @@ function sequencia(gi, acerto){
   const g = state.groups[gi];
   const antes = g.seq || 0;
   g.seq = acerto ? antes + 1 : 0;
-  if(acerto && g.seq === CONFIG.SEQUENCIA_SEM_RESSALVAS) setTimeout(() => toast(`${g.name}: ${g.seq} acertos seguidos. Parecer SEM RESSALVAS!`), 1600);
+  if(acerto && g.seq === CONFIG.SEQUENCIA_SEM_RESSALVAS){ ovo('sem ressalvas'); setTimeout(() => toast(`${g.name}: ${g.seq} acertos seguidos. Parecer SEM RESSALVAS! O Lineu aprovaria.`), 1600); }
   if(!acerto && antes >= CONFIG.SEQUENCIA_SEM_RESSALVAS) setTimeout(() => toast(`${g.name} perdeu o título Sem ressalvas.`), 1600);
 }
 const semRessalvas = g => (g.seq || 0) >= CONFIG.SEQUENCIA_SEM_RESSALVAS;
@@ -1019,15 +1091,15 @@ function errou(gi, nivel){
   const ja = ui.pb;
   ui.pb = true; ui.piada = { tipo: 'no', txt: piadaDe('no', gi) }; sfx.bad();
   // Vergonha! Vergonha! (às vezes, quando erra pergunta fácil)
-  if(nivel === 'facil' && Math.random() < 0.3){ ui.piada.txt = 'Vergonha! Vergonha! Vergonha!'; [0.5, 1.3, 2.1].forEach(s => tone(1320, 0.5, 'sine', 0.05, s)); }
-  if(!ja) telaGame('Ressalvado');
+  if(nivel === 'facil' && Math.random() < 0.5){ ovo('vergonha'); ui.piada.txt = 'Vergonha! Vergonha! Vergonha!'; [0.5, 1.3, 2.1].forEach(s => tone(1320, 0.5, 'sine', 0.05, s)); }
+  if(!ja){ telaGame('Ressalvado'); ovo('ressalvado'); }
 }
 /* Letreiro de videogame por cima da tela (some sozinho) */
 function telaGame(txt, sub, passed){
   const d = document.createElement('div');
   d.className = 'wasted' + (passed ? ' passed' : '');
   // letreiros em imagem pronta (fonte Pricedown, Typodermic): a licença permite arte fixa, não a fonte no site
-  const arq = { 'Ressalvado': 'ressalvado', 'Parecer emitido': 'parecer-emitido', 'Cheat negado': 'cheat-negado' }[txt];
+  const arq = { 'Ressalvado': 'ressalvado', 'Parecer emitido': 'parecer-emitido', 'Cheat negado': 'cheat-negado', 'Revisado': 'revisado', 'Rodada final': 'rodada-final', 'Auditoria surpresa': 'auditoria-surpresa' }[txt];
   const titulo = arq ? `<img src="img/${arq}.png?v=${Rede.VERSAO}" alt="${esc(txt)}">` : esc(txt);
   d.innerHTML = `<span>${titulo}${sub ? `<small>${esc(sub)}</small>` : ''}</span>`;
   document.body.appendChild(d); setTimeout(() => d.remove(), 2000);
@@ -1044,15 +1116,32 @@ function chooseAlt(i){
     c.awarded = pts; c.winner = c.who; c.result = 'ok'; c.stage = 'reveal'; c.done = true;
     if(c.steal) state.groups[c.who].rouboPts = (state.groups[c.who].rouboPts || 0) + pts;
     acertou(c.who); ui.piada.sub = `+${pts} para ${state.groups[c.who].name}`;
+    const seg = (Date.now() - (c.t0 || Date.now())) / 1000;
+    if(c.steal){
+      ovo('delação premiada'); ui.piada.txt = 'Delação premiada aceita: a evidência roubada valeu pontos.';
+      ovo('casamento vermelho'); toast(`Casamento Vermelho: ${state.groups[c.tried[0]].name} foi emboscada por ${state.groups[c.who].name}.`);
+    } else if(seg < 6 && c.viaCelular){ ovo('resposta rápida'); ui.piada.txt = `Analytics de ponta: resposta certa em ${seg.toFixed(1)} s.`; }
     sequencia(c.who, true);
     renderCard(); c.carimbado = true;
     if(DIFICEIS.includes(c.q.nivel)) setTimeout(sfx.stamp, 250);
     renderScores(); return;
   }
+  const meia = i >= 0 && c.q.parcial && c.q.parcial[i];
+  if(meia){
+    // conduta aceitável, mas não a melhor: leva parte dos pontos e a carta termina
+    const pts = c.steal ? Math.round(meia * CONFIG.ROUBO_FRACAO) : meia;
+    addPts(c.who, pts);
+    c.awarded = pts; c.winner = c.who; c.result = 'parcial'; c.escolha = i; c.stage = 'reveal'; c.done = true;
+    if(c.steal) state.groups[c.who].rouboPts = (state.groups[c.who].rouboPts || 0) + pts;
+    ui.pb = false; ui.piada = { tipo: 'ok', txt: 'Conduta aceitável, mas não a melhor.', sub: `+${pts} para ${state.groups[c.who].name}` }; sfx.ok();
+    renderCard(); renderScores(); return;
+  }
   if(i >= 0) c.wrong.push(i);
   state.groups[c.who].err++;
   sequencia(c.who, false);
-  errou(c.who, c.q.nivel); ui.piada.sub = i >= 0 ? `${state.groups[c.who].name} marcou ${LETRAS[i]}` : `${state.groups[c.who].name} não respondeu`;
+  errou(c.who, c.q.nivel);
+  if(c.viaCelular && (Date.now() - (c.t0 || Date.now())) < 6000){ ovo('resposta rápida'); ui.piada.txt = 'Nem leu a NBC. Resposta em menos de 6 segundos.'; }
+  ui.piada.sub = i >= 0 ? `${state.groups[c.who].name} marcou ${LETRAS[i]}` : `${state.groups[c.who].name} não respondeu`;
   if(!c.steal && podemRoubar(c).length){ c.stage = 'steal'; renderCard(); }
   else revealQ();
   renderScores();
@@ -1148,8 +1237,9 @@ setInterval(() => {
     rl.acabou = true;
     state.rounds = state.round;        // termina ao fim da rodada em andamento
     toast('Tempo de jogo esgotado: esta é a rodada final.'); sfx.end();
+    ovo('rodada final'); telaGame('Rodada final', 'o tempo acabou · a rodada em andamento vai até o fim');
     save();
-  } else if(antes > 300 && rl.restante <= 300) toast('O fechamento está chegando: faltam 5 minutos de jogo.');
+  } else if(antes > 300 && rl.restante <= 300) { ovo('fechamento chegando'); toast('O fechamento está chegando: faltam 5 minutos de jogo.'); }
   if(Math.ceil(rl.restante) !== antes){ renderHeader(); if(Math.ceil(rl.restante) % 5 === 0) sync(); }
   if(Math.ceil(rl.restante) % 15 === 0) save();
 }, 1000);
@@ -1256,7 +1346,7 @@ function openGabarito(){
     ${sec('Ética', qItems(ETICA))}
     ${sec('Casos práticos', qItems(CASOS))}
     ${sec('Casos reais', qItems(REAIS))}
-    ${sec('Dilemas éticos', DILEMAS.map(d => `<div class="gab-item"><code>${d.id}</code><div>${esc(d.pergunta)} <span style="color:var(--ink-soft)">(${esc(d.situacao)})</span><ul>${d.pontosChave.map(k => `<li>${esc(k)}</li>`).join('')}</ul></div></div>`).join(''))}
+    ${sec('Dilemas éticos', DILEMAS.map(d => `<div class="gab-item"><code>${d.id}</code><div><span style="color:var(--ink-soft)">${esc(d.contexto)}</span><br>${esc(d.pergunta)}<br><span class="ans">40: ${esc(d.alternativas[d.correta])}</span>${Object.keys(d.parcial || {}).map(k => `<br><span class="ans">${d.parcial[k]}: ${esc(d.alternativas[k])}</span>`).join('')}</div></div>`).join(''))}
     ${sec('Relâmpago', RELAMPAGO.map(r => `<div class="gab-item"><code>${r.id}</code><div>${esc(r.afirmacao)} <span class="ans">${r.resposta ? 'Verdadeiro' : 'Falso'}</span></div></div>`).join(''))}`;
   $('#gab').hidden = false;
   $('#gab').scrollTop = 0;

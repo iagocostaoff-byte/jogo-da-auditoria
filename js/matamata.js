@@ -42,10 +42,9 @@ function mmFechar(){
 
 function mmNovaPergunta(){
   const mm = state.mm;
-  let livres = MATAMATA.filter(x => !mm.usadas.includes(x.id));
-  if(!livres.length){ mm.usadas = []; livres = MATAMATA.slice(); }
-  const base = livres[Math.floor(Math.random() * livres.length)];
-  mm.usadas.push(base.id);
+  let base = sorteiaSemRepetir('mm', MATAMATA, mm.usadas);
+  if(!base){ mm.usadas = []; base = sorteiaSemRepetir('mm', MATAMATA, []); }
+  mm.usadas.push(base.id); marcaHistorico('mm', base.id);
   const ordem = base.alternativas.map((_, i) => i).sort(() => Math.random() - 0.5);
   mm.q = { id: base.id + '-' + (mm.rodada + 1), pergunta: base.pergunta, alternativas: ordem.map(i => base.alternativas[i]), correta: ordem.indexOf(base.correta) };
   mm.rodada++; mm.respostas = {}; mm.naDisputa = mm.participantes.filter(x => x.vivo).length; mm.stage = 'pergunta'; mm.msg = '';

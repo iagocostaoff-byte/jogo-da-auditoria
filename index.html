@@ -218,6 +218,9 @@ details.mod[open] summary::after{content:' −'}
 .alt.pending{border-color:var(--paper-ink);background:#E9E5DA;animation:pulse 0.8s ease-in-out infinite}
 .alt.right{background:#DCEFE3;border-color:var(--ok)}
 .alt.right .lt{background:var(--ok)}
+.alt.partial{border-color:#C8962E;background:#F6E9C9}
+.alt.partial .lt{background:#C8962E}
+.alt .alt-pts{margin-left:auto;font-weight:700;font-size:14px;color:var(--ink-soft,#555);white-space:nowrap;padding-left:10px}
 .alt.wrong{background:#F5DCD8;border-color:var(--bad);opacity:.85}
 .alt.wrong .lt{background:var(--bad)}
 .alt.dim{opacity:.45}
@@ -238,6 +241,7 @@ details.mod[open] summary::after{content:' −'}
 }
 .carimbo.bate{animation:carimbo .45s cubic-bezier(.2,1.4,.4,1) both}
 @keyframes carimbo{from{opacity:0;transform:rotate(-12deg) scale(2.6)}to{opacity:1;transform:rotate(-12deg) scale(1)}}
+.badge-sr.badge-gc{background:#B4433A;color:#fff}
 .badge-sr{display:inline-block;font-family:var(--f-body);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--paper);color:var(--paper-ink);border-radius:10px;padding:1px 7px;vertical-align:middle}
 .joke{
   display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;background:#fff;border:2px dashed var(--stamp);
@@ -295,6 +299,7 @@ details.mod[open] summary::after{content:' −'}
 .field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
 .field > .lbl{font-weight:700;font-size:15px}
 .field > .help{font-size:13px;color:var(--ink-soft);margin-top:-4px}
+.link-btn{align-self:flex-start;font-size:13px;color:var(--ink-soft);text-decoration:underline;padding:2px 0}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
 .seg button{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;font-weight:700;min-width:56px;text-align:left}
 .seg button small{display:block;font-weight:400;font-size:11px;color:var(--ink-soft)}
@@ -410,8 +415,7 @@ details.mod[open] summary::after{content:' −'}
 .wasted{position:fixed;inset:0;z-index:60;pointer-events:none;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,transparent 33%,rgba(8,10,14,.88) 41%,rgba(8,10,14,.88) 59%,transparent 67%);animation:wastedIn 1.9s ease both}
 .wasted span{font-family:var(--f-display);font-weight:800;font-size:clamp(48px,8vw,120px);letter-spacing:.06em;text-transform:uppercase;color:#C8463B;text-shadow:3px 3px 0 #000,-1px -1px 0 #000,0 0 30px rgba(0,0,0,.8)}
 .wasted.passed span{color:#E8C25A;font-size:clamp(36px,5.5vw,84px)}
-.wasted img{display:block;width:min(70vw,900px);height:auto;margin:0 auto}
-.wasted.passed img{width:min(80vw,1100px)}
+.wasted img{display:block;height:clamp(70px,10vw,140px);width:auto;max-width:92vw;object-fit:contain;margin:0 auto}
 .wasted small{display:block;text-align:center;font-family:var(--f-body);font-weight:600;font-size:max(16px,1.6vw);letter-spacing:.14em;margin-top:.3em;color:#fff;text-shadow:2px 2px 0 #000}
 @keyframes wastedIn{0%{opacity:0;transform:scale(1.15)}15%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0}}
 .estrelas{color:#E8C25A;letter-spacing:.1em;margin-left:6px}.estrelas i{font-style:normal;opacity:.25}
@@ -492,6 +496,11 @@ details.mod[open] summary::after{content:' −'}
           <span class="lbl">Mata-mata final</span>
           <div class="seg" id="seg-mm"></div>
           <span class="help">Depois do pódio, os integrantes da equipe vencedora disputam no celular o título de Auditor-Sócio (uns 5 minutos). Também desempata o 1º lugar.</span>
+        </div>
+        <div class="field">
+          <span class="lbl">Perguntas inéditas</span>
+          <span class="help" id="hist-help"></span>
+          <button class="link-btn" id="btn-hist" hidden>Zerar histórico de perguntas</button>
         </div>
         <div class="actions">
           <button class="big main" id="btn-start">Criar sala</button>
@@ -634,15 +643,15 @@ details.mod[open] summary::after{content:' −'}
   </div>
 </div>
 
-<link rel="preload" as="image" href="img/ressalvado.png?v=8"><link rel="preload" as="image" href="img/parecer-emitido.png?v=8"><link rel="preload" as="image" href="img/cheat-negado.png?v=8">
-<script src="js/firebase-config.js?v=8"></script>
+<link rel="preload" as="image" href="img/ressalvado.png?v=9"><link rel="preload" as="image" href="img/parecer-emitido.png?v=9"><link rel="preload" as="image" href="img/cheat-negado.png?v=9"><link rel="preload" as="image" href="img/revisado.png?v=9"><link rel="preload" as="image" href="img/rodada-final.png?v=9"><link rel="preload" as="image" href="img/auditoria-surpresa.png?v=9">
+<script src="js/firebase-config.js?v=9"></script>
 <script src="js/vendor/firebase-app-compat.js"></script>
 <script src="js/vendor/firebase-database-compat.js"></script>
 <script src="js/vendor/mqtt.min.js"></script>
 <script src="js/vendor/qrcode.js"></script>
-<script src="js/rede.js?v=8"></script>
-<script src="js/conteudo.js?v=8"></script>
-<script src="js/tv.js?v=8"></script>
-<script src="js/matamata.js?v=8"></script>
+<script src="js/rede.js?v=9"></script>
+<script src="js/conteudo.js?v=9"></script>
+<script src="js/tv.js?v=9"></script>
+<script src="js/matamata.js?v=9"></script>
 </body>
 </html>

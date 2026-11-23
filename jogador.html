@@ -98,6 +98,8 @@ main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .alt.sent{border-color:var(--paper-ink);background:#E9E5DA}
 .alt.right{background:#DCEFE3;border-color:var(--ok)}
 .alt.right .lt{background:var(--ok)}
+.alt.partial{background:#F6E9C9;border-color:#C8962E}
+.alt.partial .lt{background:#C8962E}
 .alt.wrong{background:#F5DCD8;border-color:var(--bad)}
 .alt.wrong .lt{background:var(--bad)}
 .alt.dim{opacity:.5}
@@ -132,6 +134,7 @@ main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .av-grid button.sel{border-color:var(--team,#fff)}
 .av-acts{display:flex;gap:8px;flex-wrap:wrap}
 .av-acts button{flex:1;padding:10px;border-radius:10px;font-weight:700;background:var(--panel-2,#222);border:1px solid var(--line,#444)}
+.link + .link{margin-left:18px}
 .link{color:var(--ink-soft);text-decoration:underline;font-size:14px;padding:6px 0;align-self:center}
 .die{font-family:var(--f-display);font-size:64px;font-weight:800;text-align:center;line-height:1}
 .center{text-align:center}
@@ -146,11 +149,11 @@ main{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 </main>
 
 <input type="file" id="foto" accept="image/*" hidden>
-<script src="js/firebase-config.js?v=8"></script>
+<script src="js/firebase-config.js?v=9"></script>
 <script src="js/vendor/firebase-app-compat.js"></script>
 <script src="js/vendor/firebase-database-compat.js"></script>
 <script src="js/vendor/mqtt.min.js"></script>
-<script src="js/rede.js?v=8"></script>
+<script src="js/rede.js?v=9"></script>
 <script>
 /* ==================================================================
    Tela do celular. O capitão (primeiro celular de cada equipe) lança o
@@ -342,7 +345,7 @@ function cartaHtml(eq, cap){
     if(c.stage !== 'answer' || c.wrong.length) h += verdict();
     h += `<div class="alts">` + c.alternativas.map((a, i) => {
       let cls = '';
-      if(c.stage === 'reveal') cls = i === c.correta ? 'right' : (c.wrong.includes(i) ? 'wrong' : 'dim');
+      if(c.stage === 'reveal') cls = i === c.correta ? 'right' : (c.parcial && c.parcial[i] ? 'partial' : (c.wrong.includes(i) ? 'wrong' : 'dim'));
       else if(c.wrong.includes(i)) cls = 'wrong';
       if(c.pending === i || enviado[key] === i) cls = 'sent';
       return `<button class="alt ${cls}" data-alt="${i}" ${podeResponder && !c.wrong.includes(i) ? '' : 'disabled'}><span class="lt">${LETRAS[i]}</span><span>${esc(a)}</span></button>`;
