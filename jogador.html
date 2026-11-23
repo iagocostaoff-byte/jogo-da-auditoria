@@ -219,6 +219,7 @@ function renderTela(){
   let h = eq ? `<div class="teamband"><div class="tn">${esc(eq.nome)}${eq.semRessalvas ? ' · Sem ressalvas' : ''}</div><div class="role">${cap ? 'Você é o capitão: você lança o dado e responde' : `Torcida${eq.capNome ? ` · capitão: ${esc(eq.capNome)}` : ''}`}</div><div class="pts num">${eq.pts}<small>pontos</small></div></div>`
     : `<div class="panel"><b>Só assistindo</b><div class="status">Você acompanha a partida sem equipe.</div></div>`;
 
+  if(est.fase === 'matamata'){ h += telaMataMata(); v.innerHTML = h; bindMataMata(); return; }
   if(est.fase === 'lobby'){
     h += `<div class="panel center"><h2>Pronto!</h2><p class="status">Aguarde o professor começar a partida.</p></div>${placar()}`;
   } else if(est.fase === 'fim'){
@@ -342,10 +343,48 @@ function placar(){
   return `<div class="panel"><div class="title">Placar</div><div class="scores">${ord.map((o, k) => `<div class="srow ${o.i === me.equipe ? 'me' : ''}" style="--c:${o.e.cor}"><span class="rk">${k+1}º</span><span class="chip" style="background:${o.e.cor};color:${textColor(o.e.cor)}">${esc(o.e.sigla)}</span><b>${esc(o.e.nome)}</b><span class="p num">${o.e.pts}</span></div>`).join('')}</div></div>`;
 }
 
+function telaMataMata(){
+  const mm = est.mm || {}, eu = (mm.participantes || []).find(p => p.pid === pid);
+  let h = `<div class="card"><div class="card-band real"><span><b>Mata-mata: Auditor-Sócio</b><small>${mm.rodada ? 'Pergunta ' + mm.rodada : 'Prepare-se'} · ${(mm.participantes || []).filter(p => p.vivo).length} na disputa</small></span>${mm.stage === 'pergunta' && mm.timer ? `<span class="timer num ${mm.timer.left <= 5 ? 'warn' : ''}">${mm.timer.left}</span>` : ''}</div><div class="card-body">`;
+  if(mm.vencedor){
+    h += `<div class="verdict ok">${mm.vencedor.pid === pid ? 'Você é o Auditor-Sócio!' : esc(mm.vencedor.nome) + ' é o Auditor-Sócio.'}</div>`;
+  } else if(!eu){
+    h += `<p class="note">Você assiste: quem disputa são os integrantes da equipe vencedora.</p>`;
+  } else if(!eu.vivo){
+    h += `<div class="verdict no">Você foi eliminado na pergunta ${eu.saiu || ''}.<small>Fique de olho na TV.</small></div>`;
+  }
+  if(mm.pergunta && !mm.vencedor){
+    const resp = enviado['mm' + mm.rodada];
+    const pode = eu && eu.vivo && mm.stage === 'pergunta' && resp === undefined;
+    h += `<p class="q">${esc(mm.pergunta)}</p><div class="alts">` + mm.alternativas.map((a, i) => {
+      let cls = '';
+      if(mm.stage !== 'pergunta' && mm.correta != null) cls = i === mm.correta ? 'right' : (resp === i ? 'wrong' : 'dim');
+      else if(resp === i) cls = 'sent';
+      return `<button class="alt ${cls}" data-mm="${i}" ${pode ? '' : 'disabled'}><span class="lt">${LETRAS[i]}</span><span>${esc(a)}</span></button>`;
+    }).join('') + `</div>`;
+    if(pode) h += `<p class="note">Rápido: na final, empate se decide pela velocidade.</p>`;
+    else if(resp !== undefined && mm.stage === 'pergunta') h += `<p class="note">Resposta enviada. Olhe para a TV!</p>`;
+    if(mm.msg && mm.stage !== 'pergunta') h += `<div class="explain">${esc(mm.msg)}</div>`;
+  } else if(!mm.vencedor){
+    h += `<p class="note">Aguarde a primeira pergunta. Todos respondem ao mesmo tempo; quem errar sai.</p>`;
+  }
+  return h + `</div></div>`;
+}
+function bindMataMata(){
+  document.body.classList.toggle('pb', !!(est.mm && (est.mm.participantes || []).some(p => p.pid === pid && !p.vivo)));
+  document.querySelectorAll('[data-mm]').forEach(b => b.onclick = () => {
+    const mm = est.mm, k = 'mm' + mm.rodada;
+    if(enviado[k] !== undefined) return;
+    enviado[k] = +b.dataset.mm; enviar({ t: 'mm', alt: +b.dataset.mm, q: mm.id }); render();
+  });
+  const tr = $('#trocar'); if(tr) tr.onclick = trocar;
+}
+
 function telaFim(){
   const pos = est.ranking ? est.ranking.indexOf(me.equipe) : -1;
   const top = est.ranking ? est.equipes[est.ranking[0]] : null;
   let h = '';
+  if(est.mm && est.mm.vencedor) h += `<div class="verdict ok">${est.mm.vencedor.pid === pid ? 'Você é o Auditor-Sócio da partida!' : 'Auditor-Sócio: ' + esc(est.mm.vencedor.nome)}</div>`;
   if(pos >= 0) h += `<div class="panel center"><div class="title">Fim de partida</div><div class="place">${pos + 1}º</div><p class="status">${pos === 0 ? (est.empate ? 'Empate no topo! O professor aplica o critério combinado.' : 'Parecer sem ressalva: vocês venceram!') : `Quem venceu: ${esc(top.nome)}.`}</p></div>`;
   else if(top) h += `<div class="panel center"><div class="title">Fim de partida</div><h2>${esc(top.nome)} venceu</h2></div>`;
   return h + placar();

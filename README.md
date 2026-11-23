@@ -17,7 +17,7 @@ Proposta de atividade: Bernardo Furtado, Iago Costa e Thiago Primo.
 | `jogador.html` | Tela dos celulares (aberta pelo QR code) |
 | `js/conteudo.js` | **Perguntas, casos reais, piadas, regras e pontuação. É o arquivo para editar.** |
 | `js/firebase-config.js` | Configuração do Firebase (opcional) |
-| `js/tv.js`, `js/rede.js` | Lógica do jogo e da conexão |
+| `js/tv.js`, `js/rede.js`, `js/matamata.js` | Lógica do jogo, da conexão e do mata-mata |
 | `js/vendor/` | Cliente MQTT, Firebase SDK e gerador de QR code (bibliotecas de código aberto) |
 
 ## Como os celulares se conectam
@@ -52,6 +52,18 @@ qualquer hospedagem de site. No GitHub Pages: **Settings › Pages › Deploy fr
 3. Os alunos apontam a câmera para o QR code, digitam o nome e escolhem a equipe.
    Toque num nome na tela da sala para trocar o capitão.
 4. Clique em **Começar partida**. Quem chegar atrasado entra pelo QR code no canto da tela (tecla **Q**).
+
+### Mata-mata: Auditor-Sócio (uns 5 minutos)
+
+No Parecer final, clique em **Mata-mata: Auditor-Sócio**. Entram todos os integrantes da equipe
+vencedora que estão com o celular na sala; se duas ou mais equipes empataram em 1º, entram todas
+elas, e a equipe de quem vencer fica com o 1º lugar.
+
+- Uma pergunta rápida por vez, com 12 segundos, todos respondem ao mesmo tempo no celular.
+- Quem erra ou não responde sai. Se todos errarem, ninguém sai.
+- Com 2 pessoas, ou a partir da 6ª pergunta, entre quem acerta vence o mais rápido.
+- Espaço avança (começar, revelar antes do tempo, próxima pergunta). As perguntas são de um banco
+  próprio (`[EDITAR-MATAMATA]`), diferente das cartas do jogo.
 
 ### Atalhos do moderador
 
@@ -101,6 +113,7 @@ Tudo fica em `js/conteudo.js`. Procure as marcações:
 | `[EDITAR-RELAMPAGO]` | verdadeiro ou falso para todas as equipes |
 | `[EDITAR-EVENTOS]` | sorte ou revés e perde a vez |
 | `[EDITAR-PIADAS]` | frases de acerto e de erro |
+| `[EDITAR-MATAMATA]` | perguntas rápidas do mata-mata do Auditor-Sócio |
 
 Nas perguntas, `correta` é a posição da resposta certa começando em 0. As alternativas são
 embaralhadas a cada partida. Depois de editar, publique de novo (no GitHub, basta enviar o arquivo alterado).

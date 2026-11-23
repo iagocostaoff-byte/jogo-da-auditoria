@@ -32,7 +32,10 @@ const CONFIG = {
   PONTOS: { facil: 10, media: 20, dificil: 30, caso: 40, real: 40, dilema: 40, relampago: 10, volta: 25, cvm: 20, fechamento: 10 },
   // Surpresas (easter eggs)
   CASA_FECHAMENTO: 31,            // quem PARA nesta casa "fecha o balanço no prazo" e ganha PONTOS.fechamento
-  SEQUENCIA_SEM_RESSALVAS: 3,     // acertos seguidos para ganhar o título "Sem ressalvas"
+  SEQUENCIA_SEM_RESSALVAS: 3,
+  // Mata-mata do Auditor-Sócio (depois do pódio)
+  MM_TEMPO: 12,                   // segundos por pergunta
+  MM_VELOCIDADE_A_PARTIR: 6,      // a partir desta pergunta, entre os que acertam vence o mais rápido     // acertos seguidos para ganhar o título "Sem ressalvas"
   ROUBO_FRACAO: 0.5,              // Roubo de Evidência vale metade; cada equipe pode roubar 1 vez por partida
   ROUBOS_POR_EQUIPE: 1,
   // Texto da nota acadêmica mostrado no pódio. Deixe NOTA: null para esconder.
@@ -882,6 +885,41 @@ const PIADAS_ERRO = [
   'Capitalizaram uma despesa aqui, hein?',
   'Ressalva: a equipe não obteve evidência suficiente.',
   'Mais uns R$ 20 bilhões em inconsistências.'
+];
+
+/* [EDITAR-MATAMATA] Perguntas rápidas do mata-mata, separadas das cartas do jogo.
+   correta = índice começando em 0; as alternativas são embaralhadas. */
+const MATAMATA = [
+  {id:'MM-01', pergunta:'Quem elabora as demonstrações contábeis?', alternativas:['A administração','O auditor'], correta:0},
+  {id:'MM-02', pergunta:'Distorção relevante e generalizada leva a qual opinião?', alternativas:['Adversa','Com ressalva','Abstenção'], correta:0},
+  {id:'MM-03', pergunta:'Terreno é depreciado?', alternativas:['Não','Sim'], correta:0},
+  {id:'MM-04', pergunta:'Circularização é evidência de fonte…', alternativas:['Externa','Interna'], correta:0},
+  {id:'MM-05', pergunta:'Auditar o próprio trabalho é ameaça de…', alternativas:['Autorrevisão','Intimidação','Familiaridade'], correta:0},
+  {id:'MM-06', pergunta:'Do registro contábil até a máquina na fábrica: qual afirmação?', alternativas:['Existência','Integridade'], correta:0},
+  {id:'MM-07', pergunta:'Qual risco o auditor controla?', alternativas:['Detecção','Inerente','Controle'], correta:0},
+  {id:'MM-08', pergunta:'Código de Ética do contador:', alternativas:['NBC PG 01','NBC TA 200','CPC 00'], correta:0},
+  {id:'MM-09', pergunta:'Goodwill é testado para impairment…', alternativas:['Todo ano','Só com indício de perda'], correta:0},
+  {id:'MM-10', pergunta:'Gasto com pesquisa (CPC 04) vai para…', alternativas:['Despesa','Intangível'], correta:0},
+  {id:'MM-11', pergunta:'Fraude se diferencia de erro pela…', alternativas:['Intenção','Valor','Data'], correta:0},
+  {id:'MM-12', pergunta:'A segurança dada pela auditoria é…', alternativas:['Razoável','Absoluta'], correta:0},
+  {id:'MM-13', pergunta:'Honorário que depende da opinião emitida é…', alternativas:['Vedado','Permitido com contrato'], correta:0},
+  {id:'MM-14', pergunta:'Quem fiscaliza o contador no Brasil?', alternativas:['CFC e CRCs','IBRACON','Receita Federal'], correta:0},
+  {id:'MM-15', pergunta:'Lei aprovada depois de Enron e WorldCom:', alternativas:['Sarbanes-Oxley','Dodd-Frank','Lei 6.404'], correta:0},
+  {id:'MM-16', pergunta:'Treinamento do operador entra no custo da máquina?', alternativas:['Não','Sim'], correta:0},
+  {id:'MM-17', pergunta:'Parágrafo de ênfase modifica a opinião?', alternativas:['Não','Sim'], correta:0},
+  {id:'MM-18', pergunta:'Valor recuperável é o MAIOR entre…', alternativas:['Valor justo menos despesas de venda e valor em uso','Custo histórico e valor de mercado'], correta:0},
+  {id:'MM-19', pergunta:'Pelo CPC 06 (R2), o arrendatário reconhece…', alternativas:['Ativo de direito de uso e passivo','Só a despesa de aluguel'], correta:0},
+  {id:'MM-20', pergunta:'Risco de fraude presumido pela NBC TA 240:', alternativas:['Reconhecimento de receita','Depreciação','Caixa pequeno'], correta:0},
+  {id:'MM-21', pergunta:'Quantos componentes tem o controle interno no COSO?', alternativas:['5','3','7'], correta:0},
+  {id:'MM-22', pergunta:'Carta assinada pela administração no fim do trabalho:', alternativas:['Carta de representação','Carta de contratação'], correta:0},
+  {id:'MM-23', pergunta:'Mudança de vida útil é aplicada…', alternativas:['Prospectivamente','Retroativamente'], correta:0},
+  {id:'MM-24', pergunta:'Investimento em controlada (demonstração individual):', alternativas:['Equivalência patrimonial','Custo','Valor de mercado'], correta:0},
+  {id:'MM-25', pergunta:'Depois que o contrato acaba, o sigilo profissional…', alternativas:['Continua','Acaba'], correta:0},
+  {id:'MM-26', pergunta:'Ativo mantido para venda continua sendo depreciado?', alternativas:['Não','Sim'], correta:0},
+  {id:'MM-27', pergunta:'Amostragem estatística elimina o risco de amostragem?', alternativas:['Não','Sim'], correta:0},
+  {id:'MM-28', pergunta:'O caso dos € 1,9 bilhão em caixa que não existiam:', alternativas:['Wirecard','Parmalat','Enron'], correta:0},
+  {id:'MM-29', pergunta:'Auditora interna que descobriu a fraude da WorldCom:', alternativas:['Cynthia Cooper','Sherron Watkins'], correta:0},
+  {id:'MM-30', pergunta:'Rodízio de firma de auditoria exigido pela CVM (sem comitê de auditoria):', alternativas:['5 anos','10 anos','2 anos'], correta:0}
 ];
 
 /* Piadas por equipe: usadas quando a equipe mantém o nome original. */

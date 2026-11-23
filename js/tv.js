@@ -88,7 +88,13 @@ function askConfirm(msg, okLabel, onOk){
 
 /* Placar e desempate: pontos, depois acertos, depois menos erros */
 function ranking(){
-  return state.groups.map((g, i) => ({ g, i })).sort((a, b) => b.g.pts - a.g.pts || b.g.ok - a.g.ok || a.g.err - b.g.err);
+  const o = state.groups.map((g, i) => ({ g, i })).sort((a, b) => b.g.pts - a.g.pts || b.g.ok - a.g.ok || a.g.err - b.g.err);
+  // empate no 1º lugar decidido no mata-mata
+  if(state.desempate != null){
+    const k = o.findIndex(x => x.i === state.desempate);
+    if(k > 0 && sameRank(o[0], o[k])){ const [x] = o.splice(k, 1); o.unshift(x); }
+  }
+  return o;
 }
 const sameRank = (a, b) => a.g.pts === b.g.pts && a.g.ok === b.g.ok && a.g.err === b.g.err;
 
@@ -137,6 +143,7 @@ function joinUrl(){
 
 /* Mensagens que chegam dos celulares. A TV é quem decide se valem. */
 function recebeMensagem(m){
+  if(m && m.t === 'mm' && typeof mmResposta === 'function'){ mmResposta(m); return; }
   if(!m || !state || state.phase !== 'play') return;
   const t = equipeDe(m.pid);
   if(t < 0 || !ehCapitao(m.pid, t)) return;           // só o capitão de cada equipe joga
@@ -171,7 +178,7 @@ function sync(){
   syncT = setTimeout(() => sala.publicar(estadoPublico()), 40);
 }
 function estadoPublico(){
-  const fase = state.phase === 'lobby' ? 'lobby' : state.phase === 'end' ? 'fim' : 'jogo';
+  const fase = state.phase === 'lobby' ? 'lobby' : state.phase === 'end' ? (state.mm && state.mm.ativo ? 'matamata' : 'fim') : 'jogo';
   const est = {
     v: ++seq, sala: state.sala, fase,
     rodada: state.round, rodadas: state.rounds, vez: state.cur, turno: ui.phase, dado: ui.lastDie,
@@ -184,7 +191,8 @@ function estadoPublico(){
     timer: ui.timer ? { left: ui.timer.left, total: ui.timer.total, running: ui.timer.running } : null,
     relogio: state.relogio ? { restante: Math.round(state.relogio.restante), acabou: !!state.relogio.acabou } : null
   };
-  if(fase === 'fim'){
+  if(state.mm && typeof mmPublico === 'function') est.mm = mmPublico();
+  if(fase === 'fim' || fase === 'matamata'){
     const order = ranking();
     est.ranking = order.map(o => o.i);
     est.empate = order.length > 1 && sameRank(order[0], order[1]);
@@ -1060,13 +1068,14 @@ function endGame(){
   stopTimer(); ui.card = null; ui.pb = false; ui.piada = null; $('#card-layer').hidden = true;
   state.phase = 'end'; save(); sync();
   const order = ranking();
-  const tied = order.length > 1 && sameRank(order[0], order[1]);
+  const tied = order.length > 1 && sameRank(order[0], order[1]) && state.desempate == null;
+  const decidido = order.length > 1 && sameRank(order[0], order[1]) && state.desempate != null;
   const pod = [1, 0, 2].map(k => {
     const o = order[k]; if(!o) return '';
     const t = team(o.i);
     return `<div class="pod p${k+1}" style="--team:${t.cor};--team-ink:${textColor(t.cor)}">${chipHtml(o.i)}<div class="pname">${esc(o.g.name)}</div><div class="ppts num">${o.g.pts} pontos</div><div class="bar">${k+1}º</div></div>`;
   }).join('');
-  const nota = CONFIG.NOTA ? `<div class="nota"><b>Nota da atividade</b><span>${esc(CONFIG.NOTA.participacao)}</span><span>${esc(CONFIG.NOTA.vencedora)}${tied ? ' · <span class="tie">Empate no 1º lugar: aplique o critério combinado</span>' : ''}</span></div>` : '';
+  const nota = CONFIG.NOTA ? `<div class="nota"><b>Nota da atividade</b><span>${esc(CONFIG.NOTA.participacao)}</span><span>${esc(CONFIG.NOTA.vencedora)}${tied ? ' · <span class="tie">Empate no 1º lugar: decida no mata-mata</span>' : ''}${decidido ? ' · <span class="tie">Empate decidido no mata-mata</span>' : ''}</span></div>` : '';
   const labelTipo = k => (TIPOS[k] ? TIPOS[k].nome : k);
   const review = state.log.length
     ? state.log.map(l => `<div class="rv"><div><code>${esc(l.id)}</code><span class="why">${l.flag ? 'marcada' : ''}${l.flag && l.missed ? ' · ' : ''}${l.missed ? 'errada' : ''}</span></div><div>${esc(l.pergunta)}<br><span class="ans">${esc(l.resposta)}</span><div class="exp">${labelTipo(l.tipo)} · ${esc(l.explicacao)}</div></div></div>`).join('')
@@ -1074,8 +1083,9 @@ function endGame(){
   $('#end-inner').innerHTML = `
     <div class="setup-head" style="justify-content:space-between">
       <div><div class="eyebrow">FACC · UFRJ · Fim de partida</div><h1>Parecer final</h1></div>
-      <div class="actions"><button class="big main" id="btn-new">Nova partida</button></div>
+      <div class="actions">${state.sala ? `<button class="big main" id="btn-mm">${state.mm && state.mm.vencedor ? 'Mata-mata de novo' : 'Mata-mata: Auditor-Sócio'}</button>` : ''}<button class="big ghost" id="btn-new">Nova partida</button></div>
     </div>
+    ${state.mm && state.mm.vencedor ? `<div class="socio-banner">${chipHtml(state.mm.vencedor.equipe)}<div><small>Auditor-Sócio da partida</small><b>${esc(state.mm.vencedor.nome)}</b></div></div>` : ''}
     <div class="end-podium">${pod}</div>
     ${nota}
     <div class="panel" style="overflow-x:auto"><table class="end-table">
@@ -1085,6 +1095,7 @@ function endGame(){
     ${(() => { const pr = premios(); return pr.length ? `<div class="panel"><h2 style="font-size:24px;margin-bottom:8px">Prêmios do parecer</h2><div class="awards">${pr.map(p => `<div class="award"><b>${esc(p.titulo)}</b><span>${p.quem.map(o => chipHtml(o.i) + ' ' + esc(o.g.name)).join(', ')}</span><small>${esc(p.desc)} · ${esc(p.valor)}</small></div>`).join('')}</div></div>` : ''; })()}
     <div class="panel review"><h2>Para retomar na discussão</h2><p>Cartas que ninguém acertou ou que você marcou durante a partida.</p>${review}</div>`;
   $('#app').hidden = true; $('#end').hidden = false; $('#end').scrollTop = 0;
+  if($('#btn-mm')) $('#btn-mm').onclick = () => mmAbrir();
   $('#btn-new').onclick = () => {
     clearSave();
     if(sala){ sala.encerrar(); sala = null; }
@@ -1181,6 +1192,7 @@ document.addEventListener('keydown', e => {
   }
   if(!$('#confirm').hidden){ if(k === 'enter'){ e.preventDefault(); $('#confirm-ok').click(); } return; }
   if(!$('#lobby').hidden){ if(k === 'enter'){ e.preventDefault(); $('#btn-lobby-go').click(); } return; }
+  if(!$('#mm').hidden){ if(k === ' ' || k === 'enter'){ e.preventDefault(); mmAvancar(); } return; }
   if($('#app').hidden || !$('#gab').hidden || !$('#help').hidden) return;
   if(k.length === 1 && /[a-z]/.test(k)){
     segredo = (segredo + k).slice(-5);
