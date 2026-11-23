@@ -15,7 +15,7 @@ const DIFICEIS = ['dificil', 'caso', 'real', 'cvm'];   // acerto dessas ganha o 
 const LETRAS = ['A', 'B', 'C', 'D', 'E'];
 
 let state = null;      // tudo que é salvo e pode ser desfeito
-let ui = {
+let ui = { ptsVis: {}, vooTok: {},
   phase: 'setup', card: null, timer: null, history: [], muted: false, toastT: null,
   pb: false, piada: null, lastDie: null,
   jogadores: {}, capFix: {}, conectado: false, erroRede: null
@@ -546,14 +546,17 @@ function pinoSvg(i){
       <path d="M-13 17 Q-13 4 -6 -3 L6 -3 Q13 4 13 17 Z" fill="${c}" stroke="#14181F" stroke-width="2.2"/>`;
   if(!a) return `<g class="pawn-body">${corpo}
       <circle cx="0" cy="-11" r="12" fill="${c}" stroke="#14181F" stroke-width="2.2"/>
-      <text x="0" y="${-11 + fs*0.36}" text-anchor="middle" font-family="${SANS}" font-size="${fs}" font-weight="700" fill="${textColor(c)}">${esc(t.sigla)}</text></g>`;
+      <text x="0" y="${-11 + fs*0.36}" text-anchor="middle" font-family="${SANS}" font-size="${fs}" font-weight="700" fill="${textColor(c)}">${esc(t.sigla)}</text>${coroaSvg(-25)}</g>`;
   const R = 15, cy = -14;
   const miolo = a.tipo === 'img'
     ? `<clipPath id="pclip-${i}"><circle cx="0" cy="${cy}" r="${R - 2}"/></clipPath><image href="${a.v}" x="${-R + 2}" y="${cy - R + 2}" width="${2*R - 4}" height="${2*R - 4}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pclip-${i})"/>`
     : `<text x="0" y="${cy + 6.5}" text-anchor="middle" font-size="18">${esc(a.v)}</text>`;
   return `<g class="pawn-body">${corpo}
       <circle cx="0" cy="${cy}" r="${R + 1.6}" fill="#14181F"/>
-      <circle cx="0" cy="${cy}" r="${R}" fill="#F4F1EA" stroke="${c}" stroke-width="3.2"/>${miolo}</g>`;
+      <circle cx="0" cy="${cy}" r="${R}" fill="#F4F1EA" stroke="${c}" stroke-width="3.2"/>${miolo}${coroaSvg(-32)}</g>`;
+}
+function coroaSvg(y){
+  return `<text class="coroa" x="0" y="${y}" text-anchor="middle" font-size="18">👑</text>`;
 }
 function atualizaPino(i){ const el = document.getElementById('pawn-' + i); if(el) el.innerHTML = pinoSvg(i); }
 
@@ -567,12 +570,13 @@ function renderPawns(){
     const base = g.pos > 0 ? geom.cells[g.pos-1].center : geom.plaza;
     const list = occ[g.pos], off = list.length > 1 ? OFFSETS[list.indexOf(i) % OFFSETS.length] : [0, 0];
     const lift = g.pos > 0 ? -32 : 10;
-    const y = Math.max(50, base.y + off[1] + lift);   // casas da borda de cima: a cabeça do pino não sai do tabuleiro
+    const y = Math.max(62, base.y + off[1] + lift);   // casas da borda de cima: a cabeça do pino não sai do tabuleiro
     el.style.transform = `translate(${base.x + off[0]}px, ${y}px)`;
     el.classList.toggle('active', i === state.cur);
   });
   const active = document.getElementById('pawn-' + state.cur);
   if(active) active.parentNode.appendChild(active);
+  atualizaCoroa();
   const g = curGroup(), pts = g && g.pos > 0 ? geom.cells[g.pos-1].poly : '';
   const hl = $('#cell-hl'), base = $('#cell-hl-base');
   if(hl){ hl.setAttribute('points', pts); hl.setAttribute('stroke', team(state.cur).cor); }
@@ -616,13 +620,26 @@ function renderScores(){
   $('#score-list').innerHTML = ranking().map((o, rank) => {
     const cap = capitao(o.i), n = membros(o.i).length;
     const cel = state.sala ? (n ? ` · ${n} cel. · cap. ${cap ? cap.nome : ''}` : ' · sem celular') : '';
-    return `<div class="score-row ${o.i === state.cur ? 'now' : ''}" style="--team:${team(o.i).cor}">
+    return `<div class="score-row ${o.i === state.cur ? 'now' : ''}" data-gi="${o.i}" style="--team:${team(o.i).cor}">
       <span class="rk num">${rank+1}º</span>${chipHtml(o.i)}
       <div class="nm"><b>${esc(o.g.name)}${semRessalvas(o.g) ? ' <span class="badge-sr">Sem ressalvas</span>' : ''}</b><span>${o.g.pos > 0 ? 'casa ' + o.g.pos : 'início'} · ${o.g.ok} acertos${o.g.skip ? ' · perde a vez' : ''}${roubosRestantes(o.i) > 0 ? '' : ' · roubo usado'}${esc(cel)}</span></div>
-      <div><div class="pts num">${o.g.pts}</div><div class="adj"><button data-adj="${o.i}" data-d="-5" aria-label="Tirar 5 pontos">−5</button><button data-adj="${o.i}" data-d="5" aria-label="Dar 5 pontos">+5</button></div></div>
+      <div><div class="pts num">${ui.ptsVis[o.i] != null ? ui.ptsVis[o.i] : o.g.pts}</div><div class="adj"><button data-adj="${o.i}" data-d="-5" aria-label="Tirar 5 pontos">−5</button><button data-adj="${o.i}" data-d="5" aria-label="Dar 5 pontos">+5</button></div></div>
     </div>`;
   }).join('');
+  atualizaCoroa();
   sync();
+}
+
+/* Coroa no pino de quem lidera sozinho (some no empate e com zero pontos) */
+function atualizaCoroa(){
+  if(!state || !state.groups) return;
+  const o = ranking(), lider = o.length && o[0].g.pts > 0 && !(o[1] && sameRank(o[0], o[1])) ? o[0].i : -1;
+  state.groups.forEach((g, i) => {
+    const el = document.getElementById('pawn-' + i); if(!el) return;
+    const era = el.classList.contains('lider');
+    el.classList.toggle('lider', i === lider);
+    if(i === lider && !era){ const c = el.querySelector('.coroa'); if(c){ c.classList.remove('nova'); void c.getBBox(); c.classList.add('nova'); } }
+  });
 }
 
 function renderLegend(){
@@ -689,7 +706,7 @@ async function movePawn(gi, steps){
       if(g.pos === total){
         g.pos = 0; renderPawns(); await sleep(300);
         g.pos = 1; g.voltas++;
-        g.pts += CONFIG.PONTOS.volta; sfx.ok();
+        addPts(gi, CONFIG.PONTOS.volta); sfx.ok();
         toast(`Volta completa! Parecer emitido: +${CONFIG.PONTOS.volta} para ${g.name}`);
         telaGame('Parecer emitido', `+${CONFIG.PONTOS.volta} · ${g.name}`, true);
       } else g.pos++;
@@ -726,7 +743,43 @@ function logCard(){
   }
 }
 
-function addPts(gi, n){ state.groups[gi].pts = Math.max(0, state.groups[gi].pts + n); renderScores(); }
+function addPts(gi, n, voo = true){
+  const g = state.groups[gi], antes = ui.ptsVis[gi] != null ? ui.ptsVis[gi] : g.pts;
+  g.pts = Math.max(0, g.pts + n);
+  if(n > 0 && voo && !$('#app').hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+    ui.ptsVis[gi] = antes; renderScores(); voarPontos(gi, n, antes);
+  } else { delete ui.ptsVis[gi]; renderScores(); }
+}
+/* "+20" sai da carta (ou do pino) e voa até o placar; lá o número sobe contando */
+function voarPontos(gi, n, de){
+  const alvo = document.querySelector(`.score-row[data-gi="${gi}"] .pts`);
+  const fonte = !$('#card-layer').hidden ? ($('#card-layer .verdict') || $('#card-layer .card')) : document.getElementById('pawn-' + gi);
+  if(!alvo || !fonte){ delete ui.ptsVis[gi]; renderScores(); return; }
+  const a = fonte.getBoundingClientRect(), b = alvo.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'voo num'; el.textContent = '+' + n;
+  el.style.setProperty('--team', team(gi).cor); el.style.setProperty('--team-ink', textColor(team(gi).cor));
+  el.style.left = (a.left + a.width / 2) + 'px'; el.style.top = (a.top + a.height / 2) + 'px';
+  el.style.setProperty('--dx', (b.left + b.width / 2 - a.left - a.width / 2) + 'px');
+  el.style.setProperty('--dy', (b.top + b.height / 2 - a.top - a.height / 2) + 'px');
+  document.body.appendChild(el);
+  const token = (ui.vooTok[gi] = (ui.vooTok[gi] || 0) + 1);
+  setTimeout(() => {
+    el.remove();
+    if(ui.vooTok[gi] !== token) return;
+    const ate = state.groups[gi].pts, t0 = performance.now(), dur = 650;
+    const passo = now => {
+      if(ui.vooTok[gi] !== token) return;
+      const k = Math.min(1, (now - t0) / dur), v = Math.round(de + (ate - de) * (1 - Math.pow(1 - k, 3)));
+      ui.ptsVis[gi] = v;
+      const p = document.querySelector(`.score-row[data-gi="${gi}"] .pts`);
+      if(p){ p.textContent = v; p.classList.add('subindo'); }
+      if(k < 1) requestAnimationFrame(passo);
+      else { delete ui.ptsVis[gi]; if(p) setTimeout(() => p.classList.remove('subindo'), 250); sfx.tick(); }
+    };
+    requestAnimationFrame(passo);
+  }, 900);
+}
 
 function undo(){
   if(!ui.history.length || ui.phase === 'rolling' || ui.phase === 'moving') return;
@@ -735,6 +788,7 @@ function undo(){
     if(ui.phase === 'idle' || ui.phase === 'skip'){ if(ui.history.length > 1) ui.history.pop(); }
     const relogio = state.relogio;
     state = JSON.parse(ui.history[ui.history.length - 1]);
+    ui.ptsVis = {}; ui.vooTok = {};
     ui.history.pop();
     if(relogio) state.relogio = relogio;   // desfazer não devolve tempo de jogo
     renderBoard(); beginTurn();
@@ -1227,7 +1281,7 @@ $('#m-end').onclick = () => askConfirm('Encerrar a partida agora e mostrar o pó
 $('#btn-roll').onclick = primary;
 $('#score-list').addEventListener('click', e => {
   const b = e.target.closest('[data-adj]'); if(!b) return;
-  addPts(+b.dataset.adj, +b.dataset.d); save();
+  addPts(+b.dataset.adj, +b.dataset.d, false); save();
 });
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-close]'); if(b) $('#' + b.dataset.close).hidden = true;
