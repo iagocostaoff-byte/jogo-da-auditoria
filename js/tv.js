@@ -178,7 +178,7 @@ function sync(){
   syncT = setTimeout(() => sala.publicar(estadoPublico()), 40);
 }
 function estadoPublico(){
-  const fase = state.phase === 'lobby' ? 'lobby' : state.phase === 'end' ? (state.mm && state.mm.ativo ? 'matamata' : 'fim') : 'jogo';
+  const fase = state.phase === 'lobby' ? 'lobby' : state.phase === 'end' ? (state.mm && state.mm.ativo ? 'matamata' : (ui.revelaAte > Date.now() ? 'apurando' : 'fim')) : 'jogo';
   const est = {
     v: ++seq, sala: state.sala, fase,
     rodada: state.round, rodadas: state.rounds, vez: state.cur, turno: ui.phase, dado: ui.lastDie,
@@ -1075,24 +1075,28 @@ function endGame(){
   state.phase = 'end'; save(); sync();
   const order = ranking();
   const tied = order.length > 1 && sameRank(order[0], order[1]) && state.desempate == null;
+  // a revelação do pódio só roda na primeira vez (voltar do mata-mata mostra direto)
+  const animar = !state.podioVisto; state.podioVisto = true;
+  if(animar){ ui.revelaAte = Date.now() + 2600; sync(); setTimeout(sync, 2700); }   // celulares só veem o resultado depois da TV
   const decidido = order.length > 1 && sameRank(order[0], order[1]) && state.desempate != null;
   const pod = [1, 0, 2].map(k => {
     const o = order[k]; if(!o) return '';
     const t = team(o.i);
-    return `<div class="pod p${k+1}" style="--team:${t.cor};--team-ink:${textColor(t.cor)}">${chipHtml(o.i)}<div class="pname">${esc(o.g.name)}</div><div class="ppts num">${o.g.pts} pontos</div><div class="bar">${k+1}º</div></div>`;
+    return `<div class="pod p${k+1}" style="--d:${[2.1, 1.0, 0.2][k]}s;--team:${t.cor};--team-ink:${textColor(t.cor)}">${chipHtml(o.i)}<div class="pname">${esc(o.g.name)}</div><div class="ppts num">${o.g.pts} pontos</div><div class="bar">${k+1}º</div></div>`;
   }).join('');
   const nota = CONFIG.NOTA ? `<div class="nota"><b>Nota da atividade</b><span>${esc(CONFIG.NOTA.participacao)}</span><span>${esc(CONFIG.NOTA.vencedora)}${tied ? ` · <span class="tie">Empate no 1º lugar${state.sala && state.matamata !== false ? ': decida no mata-mata' : ''}</span>` : ''}${decidido ? ' · <span class="tie">Empate decidido no mata-mata</span>' : ''}</span></div>` : '';
   const labelTipo = k => (TIPOS[k] ? TIPOS[k].nome : k);
   const review = state.log.length
     ? state.log.map(l => `<div class="rv"><div><code>${esc(l.id)}</code><span class="why">${l.flag ? 'marcada' : ''}${l.flag && l.missed ? ' · ' : ''}${l.missed ? 'errada' : ''}</span></div><div>${esc(l.pergunta)}<br><span class="ans">${esc(l.resposta)}</span><div class="exp">${labelTipo(l.tipo)} · ${esc(l.explicacao)}</div></div></div>`).join('')
     : '<p>Nenhuma carta errada ou marcada nesta partida.</p>';
+  $('#end-inner').classList.toggle('anim', animar);
   $('#end-inner').innerHTML = `
     <div class="setup-head" style="justify-content:space-between">
       <div><div class="eyebrow">FACC · UFRJ · Fim de partida</div><h1>Parecer final</h1></div>
       <div class="actions">${state.sala && state.matamata !== false ? `<button class="big main" id="btn-mm">${state.mm && state.mm.vencedor ? 'Mata-mata de novo' : 'Mata-mata: Auditor-Sócio'}</button>` : ''}<button class="big ghost" id="btn-new">Nova partida</button></div>
     </div>
     ${state.mm && state.mm.vencedor ? `<div class="socio-banner">${chipHtml(state.mm.vencedor.equipe)}<div><small>Auditor-Sócio da partida</small><b>${esc(state.mm.vencedor.nome)}</b></div></div>` : ''}
-    <div class="end-podium">${pod}</div>
+    <div class="end-podium ${animar ? 'anim' : ''}">${pod}</div>
     ${nota}
     <div class="panel" style="overflow-x:auto"><table class="end-table">
       <thead><tr><th>Posição</th><th>Equipe</th><th style="text-align:right">Pontos</th><th style="text-align:right">Acertos</th><th style="text-align:right">Erros</th><th style="text-align:right">Voltas</th></tr></thead>
@@ -1107,16 +1111,20 @@ function endGame(){
     if(sala){ sala.encerrar(); sala = null; }
     $('#end').hidden = true; $('#setup').hidden = false; buildSetup();
   };
-  sfx.ok();
-  for(let k = 0; k < 90; k++){
+  if(!animar) return;
+  const vence = team(order[0].i).cor;
+  [0.2, 1.0].forEach(s => setTimeout(sfx.card, s * 1000));
+  for(let k = 0; k < 7; k++) setTimeout(sfx.tick, 1500 + k * 80);   // rufar antes do 1º
+  setTimeout(() => { sfx.stamp(); setTimeout(sfx.ok, 250); }, 2200);
+  for(let k = 0; k < 110; k++){
     const p = document.createElement('div');
     p.className = 'confetti';
     p.style.left = Math.random()*100 + 'vw';
-    p.style.background = EQUIPES[k % Math.min(4, state.groups.length)].cor;
+    p.style.background = k % 3 ? vence : EQUIPES[k % Math.min(4, state.groups.length)].cor;
     p.style.animationDuration = (2.8 + Math.random()*2.5) + 's';
-    p.style.animationDelay = (Math.random()*1.5) + 's';
+    p.style.animationDelay = (2.3 + Math.random()*1.5) + 's';
     document.body.appendChild(p);
-    setTimeout(() => p.remove(), 7000);
+    setTimeout(() => p.remove(), 9500);
   }
 }
 

@@ -222,6 +222,8 @@ function renderTela(){
   if(est.fase === 'matamata'){ h += telaMataMata(); v.innerHTML = h; bindMataMata(); return; }
   if(est.fase === 'lobby'){
     h += `<div class="panel center"><h2>Pronto!</h2><p class="status">Aguarde o professor começar a partida.</p></div>${placar()}`;
+  } else if(est.fase === 'apurando'){
+    h += `<div class="panel center"><h2>Apurando o parecer…</h2><p class="status">Olhe para a TV: o pódio vai ser revelado.</p></div>`;
   } else if(est.fase === 'fim'){
     h += telaFim();
   } else {
