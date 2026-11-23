@@ -29,7 +29,10 @@ const CONFIG = {
   TEMPO_DILEMA: 90,
   TEMPO_RELAMPAGO: 20,
   TEMPO_ROUBO: 20,                // tempo para responder no Roubo de Evidência
-  PONTOS: { facil: 10, media: 20, dificil: 30, caso: 40, real: 40, dilema: 40, relampago: 10, volta: 25 },
+  PONTOS: { facil: 10, media: 20, dificil: 30, caso: 40, real: 40, dilema: 40, relampago: 10, volta: 25, cvm: 20, fechamento: 10 },
+  // Surpresas (easter eggs)
+  CASA_FECHAMENTO: 31,            // quem PARA nesta casa "fecha o balanço no prazo" e ganha PONTOS.fechamento
+  SEQUENCIA_SEM_RESSALVAS: 3,     // acertos seguidos para ganhar o título "Sem ressalvas"
   ROUBO_FRACAO: 0.5,              // Roubo de Evidência vale metade; cada equipe pode roubar 1 vez por partida
   ROUBOS_POR_EQUIPE: 1,
   // Texto da nota acadêmica mostrado no pódio. Deixe NOTA: null para esconder.
@@ -845,6 +848,9 @@ const PAUSAS = [
 /* [EDITAR-PIADAS] Aparecem na TV e nos celulares quando a equipe acerta ou erra.
    Os casos reais também têm uma piada própria, mostrada depois da resposta. */
 const PIADAS_ACERTO = [
+  'Nem a Lava Jato acharia erro nessa.',
+  'Balanço fechado no prazo e sem ressalva.',
+  'Essa a CVM homologaria sem pedir mais nada.',
   'Com vocês, a Americanas não teria ido pro ralo.',
   'Era isso que a Arthur Andersen deveria ter feito.',
   'A Wirecard tremeu agora.',
@@ -859,6 +865,11 @@ const PIADAS_ACERTO = [
   'Distorção relevante: zero.'
 ];
 const PIADAS_ERRO = [
+  'Essa resposta foi direto pro risco sacado.',
+  'A CVM abriu um processo administrativo contra essa resposta.',
+  'Essa resposta vai precisar de uma CPI.',
+  'Lucro reapresentado: essa resposta vai pra republicação.',
+  'Nem o Banco Central aprovaria essa carteira de respostas.',
   'A Wirecard aprovaria essa resposta.',
   'Isso foi mais Repo 105 do que auditoria.',
   'Até a fragmentadora da Andersen erraria menos.',

@@ -70,6 +70,19 @@ qualquer hospedagem de site. No GitHub Pages: **Settings › Pages › Deploy fr
 Rode um servidor local nesta pasta (por exemplo, `python3 -m http.server`) e abra
 `http://localhost:8000/?modo=local`: o link da sala aberto em outras abas do mesmo navegador simula os celulares.
 
+## Surpresas (não conte para a turma)
+
+| Surpresa | Como acontece |
+|---|---|
+| Auditoria surpresa da CVM | Dois 6 seguidos no dado: verdadeiro ou falso só para essa equipe, valendo o dobro |
+| Fechamento do exercício | Quem para na casa 31 (31/12) ganha +10 por fechar o balanço no prazo |
+| Carimbo AUDITADO | Acerto em pergunta difícil, caso prático, caso real ou surpresa da CVM |
+| Sem ressalvas | 3 acertos seguidos dão o título no placar, até o primeiro erro |
+| Fragmentadora | Digite ENRON no teclado da TV: a carta (ou o tabuleiro) é triturada |
+| Prêmios do parecer | No pódio: Cynthia Cooper, Ladrão de Evidências, Fragmentadora de Ouro, Repo 105, Parecer emitido e Abstenção de opinião (quem terminou com zero) |
+
+As regras e pontos das surpresas ficam em `[EDITAR-CONFIG]` (`CASA_FECHAMENTO`, `SEQUENCIA_SEM_RESSALVAS`, `PONTOS.cvm`, `PONTOS.fechamento`).
+
 ## Como editar perguntas e regras
 
 Tudo fica em `js/conteudo.js`. Procure as marcações:

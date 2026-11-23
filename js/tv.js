@@ -10,7 +10,8 @@ const SAVE_KEY = 'trilha-de-auditoria-facc-v4';
 const $ = s => document.querySelector(s);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const NIVEL = { facil: 'Fácil', media: 'Média', dificil: 'Difícil', caso: 'Caso prático', real: 'Caso real' };
+const NIVEL = { facil: 'Fácil', media: 'Média', dificil: 'Difícil', caso: 'Caso prático', real: 'Caso real', cvm: 'Surpresa' };
+const DIFICEIS = ['dificil', 'caso', 'real', 'cvm'];   // acerto dessas ganha o carimbo AUDITADO
 const LETRAS = ['A', 'B', 'C', 'D', 'E'];
 
 let state = null;      // tudo que é salvo e pode ser desfeito
@@ -64,7 +65,9 @@ const sfx = {
   tick: () => tone(950, 0.05, 'square', 0.03),
   end:  () => tone(220, 0.5, 'square', 0.05),
   card: () => tone(400, 0.1, 'triangle', 0.06),
-  join: () => tone(740, 0.08, 'triangle', 0.05)
+  join: () => tone(740, 0.08, 'triangle', 0.05),
+  stamp: () => { tone(90, 0.18, 'square', 0.12); tone(60, 0.25, 'sine', 0.15, 0.02); },
+  shred: () => { for(let k = 0; k < 14; k++) tone(120 + Math.random()*80, 0.06, 'sawtooth', 0.04, k * 0.07); }
 };
 
 function toast(msg){
@@ -175,7 +178,7 @@ function estadoPublico(){
     equipes: state.groups.map((g, i) => {
       const cap = capitao(i);
       return { nome: g.name, sigla: team(i).sigla, cor: team(i).cor, pts: g.pts, pos: g.pos, ok: g.ok, err: g.err,
-        voltas: g.voltas, skip: g.skip, roubos: roubosRestantes(i), capitao: cap ? cap.pid : null, capNome: cap ? cap.nome : null, membros: membros(i).length };
+        voltas: g.voltas, skip: g.skip, roubos: roubosRestantes(i), semRessalvas: semRessalvas(g), capitao: cap ? cap.pid : null, capNome: cap ? cap.nome : null, membros: membros(i).length };
     }),
     carta: cartaPublica(ui.card), pb: !!ui.pb, piada: ui.piada,
     timer: ui.timer ? { left: ui.timer.left, total: ui.timer.total, running: ui.timer.running } : null,
@@ -558,7 +561,7 @@ function renderScores(){
     const cel = state.sala ? (n ? ` · ${n} cel. · cap. ${cap ? cap.nome : ''}` : ' · sem celular') : '';
     return `<div class="score-row ${o.i === state.cur ? 'now' : ''}" style="--team:${team(o.i).cor}">
       <span class="rk num">${rank+1}º</span>${chipHtml(o.i)}
-      <div class="nm"><b>${esc(o.g.name)}</b><span>${o.g.pos > 0 ? 'casa ' + o.g.pos : 'início'} · ${o.g.ok} acertos${o.g.skip ? ' · perde a vez' : ''}${roubosRestantes(o.i) > 0 ? '' : ' · roubo usado'}${esc(cel)}</span></div>
+      <div class="nm"><b>${esc(o.g.name)}${semRessalvas(o.g) ? ' <span class="badge-sr">Sem ressalvas</span>' : ''}</b><span>${o.g.pos > 0 ? 'casa ' + o.g.pos : 'início'} · ${o.g.ok} acertos${o.g.skip ? ' · perde a vez' : ''}${roubosRestantes(o.i) > 0 ? '' : ' · roubo usado'}${esc(cel)}</span></div>
       <div><div class="pts num">${o.g.pts}</div><div class="adj"><button data-adj="${o.i}" data-d="-5" aria-label="Tirar 5 pontos">−5</button><button data-adj="${o.i}" data-d="5" aria-label="Dar 5 pontos">+5</button></div></div>
     </div>`;
   }).join('');
@@ -604,13 +607,21 @@ async function roll(){
   const die = $('#die'); die.classList.add('rolling');
   for(let k = 0; k < 10; k++){ setDie(1 + Math.floor(Math.random()*6)); sfx.tick(); await sleep(70); }
   const n = 1 + Math.floor(Math.random()*6);
+  const doisSeis = ui.lastDie === 6 && n === 6;
   setDie(n); die.classList.remove('rolling'); ui.lastDie = n;
-  toast(`${curGroup().name} tirou ${n}`);
+  toast(doisSeis ? `Dois 6 seguidos! Auditoria surpresa da CVM para ${curGroup().name}` : `${curGroup().name} tirou ${n}`);
   await sleep(450);
   ui.phase = 'moving'; renderTurn(); sync();
   await movePawn(state.cur, n);
-  const tipo = TRILHA[curGroup().pos - 1];
-  toast(`Casa ${curGroup().pos}: ${TIPOS[tipo].nome}`);
+  const g = curGroup();
+  if(g.pos === CONFIG.CASA_FECHAMENTO){
+    g.pts += CONFIG.PONTOS.fechamento; sfx.ok(); renderScores();
+    toast(`Casa ${g.pos} = 31/12, fechamento do exercício: balanço fechado no prazo, +${CONFIG.PONTOS.fechamento}!`);
+    await sleep(1800);
+  }
+  if(doisSeis){ openCard('cvm'); return; }
+  const tipo = TRILHA[g.pos - 1];
+  toast(`Casa ${g.pos}: ${TIPOS[tipo].nome}`);
   openCard(tipo);
 }
 
@@ -695,7 +706,13 @@ function efeitoTxt(ef){
 function openCard(tipo){
   ui.phase = 'card'; renderTurn(); renderRibbon(); sfx.card();
   const who = state.cur;
-  if(Q_TYPES.includes(tipo)){
+  if(tipo === 'cvm'){
+    const r = RELAMPAGO[Math.floor(Math.random() * RELAMPAGO.length)];
+    const q = { id: 'CVM-' + r.id.slice(4), nivel: 'cvm', tema: 'Auditoria surpresa da CVM', norma: 'Verdadeiro ou falso',
+      pergunta: r.afirmacao, alternativas: ['Verdadeiro', 'Falso'], correta: r.resposta ? 0 : 1, explicacao: r.explicacao };
+    ui.card = { kind: 'q', tipo, q, who, stage: 'answer', steal: false, tried: [who], wrong: [], done: false, flag: false, pending: null };
+    startTimer(CONFIG.TEMPO_RELAMPAGO);
+  } else if(Q_TYPES.includes(tipo)){
     const q = shuffled(draw(tipo));
     ui.card = { kind: 'q', tipo, q, who, stage: 'answer', steal: false, tried: [who], wrong: [], done: false, flag: false, pending: null };
     startTimer(state.tempo + (tipo === 'caso' || tipo === 'real' ? CONFIG.TEMPO_EXTRA_CASO : 0));
@@ -737,8 +754,8 @@ function verdictHtml(){
 function renderCard(){
   const c = ui.card;
   if(!c){ sync(); return; }
-  const t = TIPOS[c.tipo];
-  const cat = c.tipo === 'real' ? '#262A36' : INK;
+  const t = TIPOS[c.tipo] || { nome: 'Auditoria surpresa da CVM' };
+  const cat = c.tipo === 'real' ? '#262A36' : c.tipo === 'cvm' ? '#7A2E27' : INK;
   let h = `<div class="card" style="--cat:${cat}">`;
   const timing = ui.timer && !c.done && (c.stage === 'answer' || c.stage === 'debate');
 
@@ -750,6 +767,8 @@ function renderCard(){
     const title = isReal ? `${esc(q.caso)} · ${esc(q.ano)}` : t.nome;
     h += band(title, `${q.id} · ${NIVEL[q.nivel]} · ${esc(q.tema)} · ${pts} pontos`, timing);
     if(isReal) h += `<div class="stamp">CASO REAL</div>`;
+    if(c.tipo === 'cvm') h += `<div class="stamp">DOIS 6 SEGUIDOS · VALE O DOBRO</div>`;
+    if(c.stage === 'reveal' && c.result === 'ok' && DIFICEIS.includes(q.nivel)) h += `<div class="carimbo ${c.carimbado ? '' : 'bate'}">AUDITADO</div>`;
     h += `<div class="card-body">${whoLine(c.who, '', (c.steal ? `<span class="tag steal">Roubo de Evidência · vale ${pts}</span>` : '') + house + phone)}`;
     if(isReal) h += `<p class="situacao">${esc(q.contexto)}</p>`;
     h += `<p class="q-text">${esc(q.pergunta)}</p>`;
@@ -856,7 +875,7 @@ $('#card-layer').addEventListener('click', e => {
   if(act === 'award'){
     const P = Math.round(CONFIG.PONTOS.dilema * +b.dataset.f);
     c.awarded = P; c.stage = 'done'; c.done = true;
-    if(P){ addPts(c.who, P); state.groups[c.who].ok++; acertou(c.who); } else { state.groups[c.who].err++; errou(c.who); }
+    if(P){ addPts(c.who, P); state.groups[c.who].ok++; acertou(c.who); sequencia(c.who, true); } else { state.groups[c.who].err++; errou(c.who); sequencia(c.who, false); }
     renderCard(); renderScores(); return;
   }
   if(act === 'reveal'){ revelarRelampago(); return; }
@@ -874,6 +893,15 @@ function piadaDe(tipo, gi){
   if(pe && pe[tipo] && Math.random() < 0.35) return pe[tipo][Math.floor(Math.random() * pe[tipo].length)];
   return piada(tipo);
 }
+/* "Sem ressalvas": título para quem acerta várias seguidas, perdido no primeiro erro */
+function sequencia(gi, acerto){
+  const g = state.groups[gi];
+  const antes = g.seq || 0;
+  g.seq = acerto ? antes + 1 : 0;
+  if(acerto && g.seq === CONFIG.SEQUENCIA_SEM_RESSALVAS) setTimeout(() => toast(`${g.name}: ${g.seq} acertos seguidos. Parecer SEM RESSALVAS!`), 1600);
+  if(!acerto && antes >= CONFIG.SEQUENCIA_SEM_RESSALVAS) setTimeout(() => toast(`${g.name} perdeu o título Sem ressalvas.`), 1600);
+}
+const semRessalvas = g => (g.seq || 0) >= CONFIG.SEQUENCIA_SEM_RESSALVAS;
 function acertou(gi){ ui.pb = false; ui.piada = { tipo: 'ok', txt: piadaDe('ok', gi) }; sfx.ok(); }
 function errou(gi){ ui.pb = true; ui.piada = { tipo: 'no', txt: piadaDe('no', gi) }; sfx.bad(); }
 
@@ -888,10 +916,14 @@ function chooseAlt(i){
     c.awarded = pts; c.winner = c.who; c.result = 'ok'; c.stage = 'reveal'; c.done = true;
     if(c.steal) state.groups[c.who].rouboPts = (state.groups[c.who].rouboPts || 0) + pts;
     acertou(c.who); ui.piada.sub = `+${pts} para ${state.groups[c.who].name}`;
-    renderCard(); renderScores(); return;
+    sequencia(c.who, true);
+    renderCard(); c.carimbado = true;
+    if(DIFICEIS.includes(c.q.nivel)) setTimeout(sfx.stamp, 250);
+    renderScores(); return;
   }
   if(i >= 0) c.wrong.push(i);
   state.groups[c.who].err++;
+  sequencia(c.who, false);
   errou(c.who); ui.piada.sub = i >= 0 ? `${state.groups[c.who].name} marcou ${LETRAS[i]}` : `${state.groups[c.who].name} não respondeu`;
   if(!c.steal && podemRoubar(c).length){ c.stage = 'steal'; renderCard(); }
   else revealQ();
@@ -949,6 +981,33 @@ function paintTimer(){
 }
 
 /* ==================================================================
+   SEGREDO: digite ENRON na TV para triturar a carta (ou o tabuleiro)
+   ================================================================== */
+let segredo = '';
+function triturar(){
+  const alvo = document.querySelector('#card-layer:not([hidden]) .card') || $('#board');
+  const r = alvo.getBoundingClientRect(), tiras = 14, w = r.width / tiras;
+  sfx.shred();
+  setTimeout(() => toast('Documentos triturados. A Arthur Andersen mandou lembranças.'), 2700);
+  const layer = document.createElement('div');
+  layer.style.cssText = 'position:fixed;inset:0;z-index:90;pointer-events:none;overflow:hidden';
+  for(let k = 0; k < tiras; k++){
+    const box = document.createElement('div');
+    box.style.cssText = `position:absolute;left:${r.left + k*w}px;top:${r.top}px;width:${w}px;height:${r.height}px;overflow:hidden`;
+    const clone = alvo.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.style.cssText = `position:absolute;left:${-k*w}px;top:0;width:${r.width}px;height:${r.height}px;margin:0;animation:none`;
+    box.appendChild(clone);
+    box.animate([{ transform: 'translateY(0) rotate(0)' }, { transform: `translateY(${window.innerHeight}px) rotate(${(Math.random()*16-8).toFixed(1)}deg)` }],
+      { duration: 1400 + Math.random()*600, delay: 250 + k*45, easing: 'cubic-bezier(.5,0,.9,.6)', fill: 'forwards' });
+    layer.appendChild(box);
+  }
+  alvo.style.visibility = 'hidden';
+  document.body.appendChild(layer);
+  setTimeout(() => { layer.remove(); alvo.style.visibility = ''; }, 2900);
+}
+
+/* ==================================================================
    RELÓGIO DA PARTIDA (modo por tempo)
    ================================================================== */
 let ultimoTique = Date.now();
@@ -989,6 +1048,8 @@ function premios(){
   const er = top('err'); add('Fragmentadora de Ouro', 'mais erros (a Arthur Andersen mandou lembranças)', er, er && er[0].g.err);
   const pd = top('perdas'); add('Prêmio Repo 105', 'mais pontos perdidos em revés', pd, pd && pd[0].g.perdas + ' pts');
   const vt = top('voltas'); add('Parecer emitido', 'mais voltas completas no tabuleiro', vt, vt && vt[0].g.voltas);
+  const zero = gs.filter(o => o.g.pts === 0);
+  if(zero.length) lista.push({ titulo: 'Parecer com abstenção de opinião', desc: 'terminou com zero pontos: não deu para formar opinião', quem: zero, valor: '0 pts' });
   return lista;
 }
 
@@ -1121,6 +1182,11 @@ document.addEventListener('keydown', e => {
   if(!$('#confirm').hidden){ if(k === 'enter'){ e.preventDefault(); $('#confirm-ok').click(); } return; }
   if(!$('#lobby').hidden){ if(k === 'enter'){ e.preventDefault(); $('#btn-lobby-go').click(); } return; }
   if($('#app').hidden || !$('#gab').hidden || !$('#help').hidden) return;
+  if(k.length === 1 && /[a-z]/.test(k)){
+    segredo = (segredo + k).slice(-5);
+    if(segredo === 'enron'){ segredo = ''; triturar(); return; }
+    for(let L = Math.min(4, segredo.length); L >= 2; L--){ if('enron'.startsWith(segredo.slice(-L))) return; }   // digitando o código: ignora atalhos
+  }
   if(k === ' ' || k === 'enter'){ e.preventDefault(); primary(); return; }
   const idx = '1234'.indexOf(k) >= 0 ? '1234'.indexOf(k) : 'abcd'.indexOf(k);
   if(idx >= 0 && k.length === 1){ chooseAlt(idx); return; }

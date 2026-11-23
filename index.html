@@ -223,6 +223,14 @@ details.mod[open] summary::after{content:' −'}
 .explain{background:var(--paper-2);border-radius:12px;padding:12px 16px;font-size:clamp(14px,1.15vw,21px)}
 .explain .res{font-family:var(--f-display);font-weight:800;font-size:1.1em;margin-bottom:4px}
 .explain .norma{display:inline-block;margin-top:6px;font-size:.8em;color:var(--paper-soft);letter-spacing:.04em}
+.carimbo{
+  position:absolute;right:28px;bottom:96px;z-index:3;transform:rotate(-12deg);border:5px solid #B4433A;color:#B4433A;
+  font-family:var(--f-display);font-weight:800;letter-spacing:.14em;font-size:clamp(26px,3vw,54px);padding:2px 16px;border-radius:10px;
+  background:rgba(255,255,255,.85);pointer-events:none;mix-blend-mode:multiply;
+}
+.carimbo.bate{animation:carimbo .45s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes carimbo{from{opacity:0;transform:rotate(-12deg) scale(2.6)}to{opacity:1;transform:rotate(-12deg) scale(1)}}
+.badge-sr{display:inline-block;font-family:var(--f-body);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--paper);color:var(--paper-ink);border-radius:10px;padding:1px 7px;vertical-align:middle}
 .joke{
   display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;background:#fff;border:2px dashed var(--stamp);
   border-radius:12px;padding:12px 16px;font-size:clamp(15px,1.2vw,22px);
@@ -377,7 +385,7 @@ details.mod[open] summary::after{content:' −'}
 }
 @media (prefers-reduced-motion:reduce){
   .pawn{transition:none}.pawn.active .pawn-body{animation:none;transform:scale(1.55)}
-  #cell-hl,.die.rolling,.card,.toast,.alt.pending,body.pb .card{animation:none}
+  #cell-hl,.die.rolling,.card,.toast,.alt.pending,body.pb .card,.carimbo.bate{animation:none}
   .confetti{display:none}
 }
 </style>

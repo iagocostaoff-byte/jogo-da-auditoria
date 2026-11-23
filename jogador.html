@@ -216,7 +216,7 @@ function renderTela(){
     document.documentElement.style.setProperty('--team-ink', textColor(eq.cor));
   }
   const cap = eq && eq.capitao === pid;
-  let h = eq ? `<div class="teamband"><div class="tn">${esc(eq.nome)}</div><div class="role">${cap ? 'Você é o capitão: você lança o dado e responde' : `Torcida${eq.capNome ? ` · capitão: ${esc(eq.capNome)}` : ''}`}</div><div class="pts num">${eq.pts}<small>pontos</small></div></div>`
+  let h = eq ? `<div class="teamband"><div class="tn">${esc(eq.nome)}${eq.semRessalvas ? ' · Sem ressalvas' : ''}</div><div class="role">${cap ? 'Você é o capitão: você lança o dado e responde' : `Torcida${eq.capNome ? ` · capitão: ${esc(eq.capNome)}` : ''}`}</div><div class="pts num">${eq.pts}<small>pontos</small></div></div>`
     : `<div class="panel"><b>Só assistindo</b><div class="status">Você acompanha a partida sem equipe.</div></div>`;
 
   if(est.fase === 'lobby'){
